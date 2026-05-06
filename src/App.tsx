@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -13,6 +13,10 @@ import {
 } from "lucide-react";
 import Dashboard from "./components/Dashboard";
 import POS from "./components/POS";
+import Stock from "./components/Stock";
+import Products from "./components/Products";
+import Reports from "./components/Reports";
+import Production from "./components/Production";
 
 export default function App() {
   return (
@@ -21,6 +25,10 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/pos" element={<POS />} />
+          <Route path="/stok" element={<Stock />} />
+          <Route path="/produk" element={<Products />} />
+          <Route path="/laporan" element={<Reports />} />
+          <Route path="/produksi" element={<Production />} />
           <Route path="*" element={<Dashboard />} />
         </Routes>
       </Layout>
@@ -28,7 +36,7 @@ export default function App() {
   );
 }
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const activePath = location.pathname;
 
@@ -50,10 +58,10 @@ function Layout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 space-y-1">
           <NavItem icon={LayoutDashboard} label="Dashboard" to="/" active={activePath === "/"} />
           <NavItem icon={ShoppingCart} label="Point of Sale" to="/pos" active={activePath === "/pos"} />
-          <NavItem icon={Package} label="Inventaris Stok" to="#" active={activePath === "/stok"} />
-          <NavItem icon={Shirt} label="Katalog Produk" to="#" active={activePath === "/produk"} />
-          <NavItem icon={BarChart3} label="Laporan Keuangan" to="#" active={activePath === "/laporan"} />
-          <NavItem icon={Hammer} label="Produksi Massal" to="#" active={activePath === "/produksi"} />
+          <NavItem icon={Package} label="Inventaris Stok" to="/stok" active={activePath === "/stok"} />
+          <NavItem icon={Shirt} label="Katalog Produk" to="/produk" active={activePath === "/produk"} />
+          <NavItem icon={BarChart3} label="Laporan Keuangan" to="/laporan" active={activePath === "/laporan"} />
+          <NavItem icon={Hammer} label="Produksi Massal" to="/produksi" active={activePath === "/produksi"} />
         </nav>
 
         <div className="mt-auto pt-6 border-t border-slate-100">

@@ -1,135 +1,298 @@
-import { useState, ReactNode } from "react";
-import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
+import { useState } from "react"
+
+import DashboardPage from "./pages/DashboardPage"
+import POSPage from "./pages/POSPage"
+import InventoryPage from "./pages/InventoryPage"
+import FinancePage from "./pages/FinancePage"
+import ProductionPage from "./pages/ProductionPage"
+import TrackingPage from "./pages/TrackingPage"
+
 import {
   LayoutDashboard,
   ShoppingCart,
-  Package,
-  Shirt,
-  BarChart3,
-  Hammer,
-  Bell,
-  Search,
-  Plus,
+  Boxes,
+  Wallet,
+  Factory,
   Eye,
-} from "lucide-react";
-import Dashboard from "./components/Dashboard";
-import POS from "./components/POS";
-import Stock from "./components/Stock";
-import Products from "./components/Products";
-import Reports from "./components/Reports";
-import Production from "./components/Production";
-import ProductionMonitor from "./components/ProductionMonitor";
+} from "lucide-react"
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/pos" element={<POS />} />
-          <Route path="/stok" element={<Stock />} />
-          <Route path="/laporan" element={<Reports />} />
-          <Route path="/produksi" element={<Production />} />
-          <Route path="/pantau-produksi" element={<ProductionMonitor />} />
-          <Route path="*" element={<Dashboard />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
-  );
-}
 
-function Layout({ children }: { children: ReactNode }) {
-  const location = useLocation();
-  const activePath = location.pathname;
+  const [activePage, setActivePage] =
+    useState("dashboard")
+
+  const menus = [
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: LayoutDashboard,
+    },
+
+    {
+      id: "pos",
+      label: "Point of Sale",
+      icon: ShoppingCart,
+    },
+
+    {
+      id: "inventory",
+      label: "Inventaris Stok",
+      icon: Boxes,
+    },
+
+    {
+      id: "finance",
+      label: "Laporan Keuangan",
+      icon: Wallet,
+    },
+
+    {
+      id: "production",
+      label: "Produksi Massal",
+      icon: Factory,
+    },
+
+    {
+      id: "tracking",
+      label: "Pantau Produksi",
+      icon: Eye,
+    },
+  ]
+
+  const renderPage = () => {
+
+    switch (activePage) {
+
+      case "dashboard":
+        return <DashboardPage />
+
+      case "pos":
+        return <POSPage />
+
+      case "inventory":
+        return <InventoryPage />
+
+      case "finance":
+        return <FinancePage />
+
+      case "production":
+        return <ProductionPage />
+
+      case "tracking":
+        return <TrackingPage />
+
+      default:
+        return <DashboardPage />
+    }
+  }
 
   return (
-    <div className="flex min-h-screen font-sans selection:bg-heritage-red selection:text-white">
+
+    <div className="min-h-screen bg-[#F8F8F8] flex">
+
       {/* SIDEBAR */}
-      <aside className="hidden lg:flex w-64 flex-col border-r border-heritage-border bg-heritage-paper px-6 py-8">
-        <div className="mb-10 px-2">
-          <Link to="/">
-            <h2 className="text-2xl font-bold tracking-tighter text-heritage-red">
-              Baloeng Gedhe
-            </h2>
-          </Link>
-          <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mt-1">
+      <aside
+        className="
+          w-[280px]
+          bg-white
+          border-r
+          border-gray-200
+          p-6
+          hidden
+          lg:flex
+          flex-col
+        "
+      >
+
+        {/* LOGO */}
+        <div>
+
+          <h1 className="text-4xl font-bold">
+            Baloeng Gedhe
+          </h1>
+
+          <p className="text-gray-400 mt-2">
             Manufacturing OS
           </p>
+
         </div>
 
-        <nav className="flex-1 space-y-1">
-          <NavItem icon={LayoutDashboard} label="Dashboard" to="/" active={activePath === "/"} />
-          <NavItem icon={ShoppingCart} label="Point of Sale" to="/pos" active={activePath === "/pos"} />
-          <NavItem icon={Package} label="Inventaris Stok" to="/stok" active={activePath === "/stok"} />
-          <NavItem icon={BarChart3} label="Laporan Keuangan" to="/laporan" active={activePath === "/laporan"} />
-          <NavItem icon={Hammer} label="Produksi Massal" to="/produksi" active={activePath === "/produksi"} />
-          <NavItem icon={Eye} label="Pantau Produksi" to="/pantau-produksi" active={activePath === "/pantau-produksi"} />
-        </nav>
+        {/* MENU */}
+        <div className="mt-12 space-y-3">
 
-        <div className="mt-auto pt-6 border-t border-slate-100">
-          <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold text-xs group-hover:scale-105 transition-transform">
+          {menus.map((menu) => {
+
+            const Icon = menu.icon
+
+            return (
+
+              <button
+                key={menu.id}
+                onClick={() =>
+                  setActivePage(menu.id)
+                }
+                className={`
+                  w-full
+                  flex
+                  items-center
+                  gap-4
+                  px-5
+                  py-4
+                  rounded-2xl
+                  transition
+                  text-left
+
+                  ${
+                    activePage === menu.id
+                      ? "bg-red-50 text-red-700 font-semibold"
+                      : "hover:bg-gray-50 text-gray-600"
+                  }
+                `}
+              >
+
+                <Icon size={22} />
+
+                <span>
+                  {menu.label}
+                </span>
+
+              </button>
+
+            )
+          })}
+
+        </div>
+
+        {/* FOOTER */}
+        <div className="mt-auto">
+
+          <div
+            className="
+              bg-gray-50
+              rounded-2xl
+              p-4
+              flex
+              items-center
+              gap-4
+            "
+          >
+
+            <div
+              className="
+                w-12
+                h-12
+                rounded-full
+                bg-red-700
+                text-white
+                flex
+                items-center
+                justify-center
+                font-bold
+              "
+            >
               BG
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-slate-800 truncate">Admin Baloeng</p>
-              <p className="text-[10px] text-slate-500 font-medium">Manager Produksi</p>
+
+            <div>
+
+              <h3 className="font-semibold">
+                Admin Baloeng
+              </h3>
+
+              <p className="text-sm text-gray-500">
+                Production Manager
+              </p>
+
             </div>
+
           </div>
+
         </div>
+
       </aside>
 
       {/* MAIN */}
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        {/* TOP PANEL */}
-        <header className="sticky top-0 z-10 bg-white border-b border-heritage-border px-8 py-4 flex items-center justify-between shrink-0 shadow-sm">
-          <div className="relative w-full max-w-sm hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <main className="flex-1 overflow-hidden">
+
+        {/* TOPBAR */}
+        <div
+          className="
+            h-[90px]
+            bg-white
+            border-b
+            border-gray-200
+            px-4
+            sm:px-8
+            flex
+            items-center
+            justify-between
+          "
+        >
+
+          {/* SEARCH */}
+          <div className="w-full max-w-xl">
+
             <input
-              className="w-full bg-slate-50 border border-slate-200 rounded-full py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-1 focus:ring-heritage-red/20 focus:border-heritage-red/30 transition-all placeholder:text-slate-400"
+              type="text"
               placeholder="Cari data produksi..."
+              className="
+                w-full
+                bg-gray-100
+                rounded-2xl
+                px-6
+                py-4
+                outline-none
+              "
             />
+
           </div>
 
-          <div className="flex items-center gap-6 ml-auto">
-            <div className="relative cursor-pointer hover:opacity-80 transition-opacity">
-              <Bell className="w-5 h-5 text-slate-600" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-600 rounded-full border-2 border-white"></span>
+          {/* RIGHT */}
+          <div className="flex items-center gap-4 ml-5">
+
+            <div
+              className="
+                w-11
+                h-11
+                rounded-full
+                bg-gray-100
+                flex
+                items-center
+                justify-center
+              "
+            >
+              🔔
             </div>
-            <div className="hidden sm:flex flex-col items-end">
-              <p className="text-[10px] font-bold text-slate-800 uppercase tracking-tight">Baloeng Gedhe</p>
-              <p className="text-[9px] text-green-600 font-bold">System Online</p>
+
+            <div
+              className="
+                w-11
+                h-11
+                rounded-full
+                bg-red-700
+                text-white
+                flex
+                items-center
+                justify-center
+                font-bold
+              "
+            >
+              BG
             </div>
-            <Link to="/pos">
-              <button className="flex items-center gap-2 bg-heritage-red text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-heritage-red/90 transition-all shadow-sm active:scale-95">
-                <Plus className="w-4 h-4" />
-                <span>Tambah Order</span>
-              </button>
-            </Link>
+
           </div>
-        </header>
+
+        </div>
 
         {/* PAGE CONTENT */}
-        <div className="flex-1">
-          {children}
-        </div>
-      </main>
-    </div>
-  );
-}
+        <div className="h-[calc(100vh-90px)] overflow-y-auto">
 
-function NavItem({ icon: Icon, label, to, active }: { icon: any, label: string, to: string, active?: boolean }) {
-  return (
-    <Link
-      to={to}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group relative ${
-        active
-          ? "bg-red-50 text-heritage-red font-semibold"
-          : "text-slate-600 hover:bg-slate-50"
-      }`}
-    >
-      <Icon className={`w-4 h-4 transition-colors ${active ? "text-heritage-red" : "text-slate-400 group-hover:text-slate-600"}`} />
-      <span className="text-sm">{label}</span>
-    </Link>
-  );
+          {renderPage()}
+
+        </div>
+
+      </main>
+
+    </div>
+  )
 }

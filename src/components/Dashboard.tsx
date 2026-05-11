@@ -53,7 +53,7 @@ export default function Dashboard() {
             Ringkasan operasional dan keuangan hari ini, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+        <button className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
           Unduh Laporan
         </button>
       </motion.div>
@@ -78,7 +78,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className="col-span-12 lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col"
+          className="col-span-12 lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-col"
         >
           <div className="flex items-center justify-between mb-6 shrink-0">
             <h3 className="font-bold text-slate-800">Status Produksi</h3>
@@ -99,12 +99,12 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-4 text-center">
+          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-sm text-slate-600">Motong</p>
               <p className="text-sm font-bold text-slate-800">120 Pcs</p>
             </div>
-            <div className="border-x border-slate-100 px-4">
+            <div className="border-x border-gray-200 px-4">
               <p className="text-sm text-slate-600">Jahit</p>
               <p className="text-sm font-bold text-red-700">345 Pcs</p>
             </div>
@@ -120,7 +120,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5 }}
-          className="col-span-12 lg:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col"
+          className="col-span-12 lg:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-col"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-bold text-slate-800">Monitoring</h3>
@@ -133,7 +133,7 @@ export default function Dashboard() {
             <MonitoringItem label="Rekap Omset" count={8} color="bg-blue-500" />
           </div>
 
-          <div className="mt-8 pt-4 border-t border-slate-100">
+          <div className="mt-8 pt-4 border-t border-gray-200">
             <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Persediaan Bahan</h4>
             <div className="flex flex-wrap gap-2">
               <StockTag label="Linen" count="120m" />
@@ -149,7 +149,7 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
-        className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100"
+        className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200"
       >
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -165,7 +165,7 @@ export default function Dashboard() {
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="1" vertical={false} stroke="#F1F5F9" />
+              <CartesianGrid strokeDasharray="1" vertical={false} stroke="#E5E7EB" />
               <XAxis
                 dataKey="name"
                 axisLine={false}
@@ -176,7 +176,7 @@ export default function Dashboard() {
               <YAxis hide />
               <Tooltip
                 cursor={{ fill: "#F8FAFC" }}
-                contentStyle={{ borderRadius: "12px", border: "1px solid #F1F5F9", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", padding: "10px" }}
+                contentStyle={{ borderRadius: "12px", border: "1px solid #E5E7EB", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", padding: "10px" }}
               />
               <Bar
                 dataKey="value"
@@ -200,7 +200,7 @@ function StatCard({ title, value, trend, color, index }: { title: string, value:
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 + index * 0.05 }}
-      className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 hover:border-heritage-red/20 hover:shadow-md transition-all group"
+      className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 hover:border-heritage-red/20 hover:shadow-md transition-all group"
     >
       <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">{title}</p>
       <h3 className="text-xl font-bold text-slate-900 group-hover:text-heritage-red transition-colors">{value}</h3>
@@ -239,7 +239,7 @@ function ProgressRow({ title, percent, status, index }: { title: string, percent
 
 function MonitoringItem({ label, count, active, color }: { label: string, count: number, active?: boolean, color: string }) {
   return (
-    <div className={`flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${active ? "bg-slate-50 border border-slate-100 shadow-sm" : "hover:bg-slate-50/50"}`}>
+    <div className={`flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${active ? "bg-slate-50 border border-gray-200 shadow-sm" : "hover:bg-slate-50/50"}`}>
       <div className="flex items-center gap-3">
         <div className={`w-2 h-2 rounded-full ${color}`} />
         <span className={`text-xs font-semibold ${active ? "text-slate-900" : "text-slate-500"}`}>{label}</span>
@@ -251,7 +251,7 @@ function MonitoringItem({ label, count, active, color }: { label: string, count:
 
 function StockTag({ label, count }: { label: string, count: string }) {
   return (
-    <div className="px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors group">
+    <div className="px-3 py-1.5 bg-slate-50 rounded-lg border border-gray-200 hover:bg-slate-100 transition-colors group">
       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{label}:</span>
       <span className="ml-1 text-xs font-bold text-slate-800">{count}</span>
     </div>

@@ -20,7 +20,7 @@ h1, h2, h3, h4, h5, h6 {
   @apply font-bold text-slate-900;
 }
 
-.print-only {
+.print-only, .print-title {
   display: none;
 }
 
@@ -28,7 +28,20 @@ h1, h2, h3, h4, h5, h6 {
   .no-print {
     display: none !important;
   }
-  .print-only {
+  .print-only, .print-title {
     display: block !important;
   }
+}
+
+::-webkit-scrollbar{
+  width:6px;
+}
+
+::-webkit-scrollbar-track{
+  background:transparent;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#d1d5db;
+  border-radius:999px;
 }

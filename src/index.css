@@ -19,3 +19,16 @@ body {
 h1, h2, h3, h4, h5, h6 {
   @apply font-bold text-slate-900;
 }
+
+.print-only {
+  display: none;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}

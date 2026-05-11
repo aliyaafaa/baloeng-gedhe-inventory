@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { 
   ShoppingCart, 
   Trash2, 
@@ -26,40 +26,84 @@ export default function POS() {
     </div>
   );
 
-  const WorkflowItem = ({ step, title, desc, status, progress }: { step: string; title: string; desc: string; status: 'done' | 'progress' | 'pending'; progress?: number }) => {
+  const WorkflowItem = ({
+    step,
+    title,
+    desc,
+    status,
+    progress,
+    image
+  }: {
+    step: string;
+    title: string;
+    desc: string;
+    status: 'done' | 'progress' | 'pending';
+    progress?: number;
+    image?: string | null;
+    key?: string | number;
+  }) => {
     const colors = {
-      done: "bg-green-50 text-green-700 border-green-100",
-      progress: "bg-amber-50 text-amber-700 border-amber-100",
-      pending: "bg-slate-50 text-slate-400 border-slate-100",
+      done: "bg-green-100 text-green-700",
+      progress: "bg-amber-100 text-amber-700",
+      pending: "bg-slate-100 text-slate-500",
     };
 
     return (
-      <div className="flex gap-5 group">
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black text-sm border shadow-sm shrink-0 ${colors[status]}`}>
+      <div className="flex gap-5">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold shrink-0 ${colors[status]}`}>
           {step}
         </div>
-        <div className="flex-1 pb-6 border-l-2 border-slate-50 pl-6 relative">
-           <div className={`absolute left-[-6px] top-5 w-2.5 h-2.5 rounded-full border-2 border-white shadow-sm ${status === 'done' ? 'bg-green-500' : status === 'progress' ? 'bg-amber-500 animate-pulse' : 'bg-slate-200'}`} />
-           <div className="flex justify-between items-start">
-             <div>
-               <h3 className="font-bold text-slate-800 text-sm group-hover:text-red-700 transition-colors uppercase tracking-tight">{title}</h3>
-               <p className="text-xs text-slate-500 mt-0.5 font-medium">{desc}</p>
-             </div>
-             <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${colors[status]}`}>
-               {status}
-             </span>
-           </div>
-           {progress && (
-             <div className="mt-4 bg-slate-100 h-1.5 rounded-full overflow-hidden w-full max-w-xs">
-               <motion.div 
-                 initial={{ width: 0 }}
-                 animate={{ width: `${progress}%` }}
-                 className="bg-amber-500 h-full"
-               />
-               <p className="text-[10px] font-bold text-amber-700 mt-1.5 uppercase tracking-widest">{progress}% Selesai</p>
-             </div>
-           )}
+
+        <div className="flex-1">
+          <div className="flex justify-between items-center">
+            <h3 className="font-bold text-slate-800">{title}</h3>
+            <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${colors[status]}`}>
+              {status}
+            </span>
+          </div>
+
+          <p className="text-slate-500 text-sm mt-1 font-medium italic">
+            {desc}
+          </p>
+
+          {/* PROGRESS */}
+          {progress !== undefined && progress > 0 && (
+            <div className="mt-3">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progress}%` }}
+                  className="bg-amber-500 h-full"
+                ></motion.div>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400 mt-1.5 uppercase tracking-widest">
+                {progress}% selesai
+              </p>
+            </div>
+          )}
+
+          {/* FOTO */}
+          {image && (
+            <img
+              src={image}
+              alt="workflow"
+              className="w-40 h-40 object-cover rounded-2xl mt-4 border border-slate-100 shadow-sm"
+            />
+          )}
         </div>
+      </div>
+    );
+  };
+
+  const WorkflowPrint = ({ step, title }: { step: string; title: string }) => {
+    return (
+      <div className="flex items-center gap-4 border border-slate-100 rounded-2xl p-4">
+        <div className="w-10 h-10 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold text-xs">
+          {step}
+        </div>
+        <h3 className="font-semibold text-slate-800 text-sm">
+          {title}
+        </h3>
       </div>
     );
   };
@@ -76,6 +120,8 @@ export default function POS() {
   const [showPaymentStatus, setShowPaymentStatus] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("DP");
   const [paymentAmount, setPaymentAmount] = useState(50000000);
+  const [orderStatus, setOrderStatus] = useState("OPEN");
+  const [draftOrders, setDraftOrders] = useState<any[]>([]);
   const [editNotes, setEditNotes] = useState(false);
   const [productionNotes, setProductionNotes] = useState(
     `- Bordir presisi logo dada kiri & lengan\n\n- Material kain pilihan kualitas premium heritage\n\n- Deadline produksi sebelum 25 Mei 2026\n\n- Quality control ketat per unit produksi`
@@ -83,6 +129,87 @@ export default function POS() {
   const [customPrice, setCustomPrice] = useState(70000);
   const [customerName, setCustomerName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [showUpdateProduksi, setShowUpdateProduksi] = useState(false);
+  const [showSuratKerja, setShowSuratKerja] = useState(false);
+  const [selectedWorkflow, setSelectedWorkflow] = useState("Bordir Logo");
+  const [workflowStatus, setWorkflowStatus] = useState("progress");
+  const [productionProgress, setProductionProgress] = useState(64);
+  const [workflowData, setWorkflowData] = useState([
+    {
+      step: "1",
+      title: "Invoice & Surat Kerja",
+      desc: "Invoice dan surat kerja berhasil dibuat",
+      status: "done",
+      progress: 100,
+      image: null as string | null,
+    },
+    {
+      step: "2",
+      title: "Pengadaan Kain",
+      desc: "Material produksi telah diterima",
+      status: "done",
+      progress: 100,
+      image: null as string | null,
+    },
+    {
+      step: "3",
+      title: "Potong Kain",
+      desc: "500 pola berhasil dipotong",
+      status: "done",
+      progress: 100,
+      image: null as string | null,
+    },
+    {
+      step: "4",
+      title: "Bordir Logo",
+      desc: "320 pcs selesai bordir logo",
+      status: "progress",
+      progress: 64,
+      image: null as string | null,
+    },
+    {
+      step: "5",
+      title: "Jahit Produksi",
+      desc: "Menunggu proses bordir selesai",
+      status: "pending",
+      progress: 0,
+      image: null as string | null,
+    },
+    {
+      step: "6",
+      title: "Quality Control",
+      desc: "QC final produksi",
+      status: "pending",
+      progress: 0,
+      image: null as string | null,
+    },
+    {
+      step: "7",
+      title: "Packing & Delivery",
+      desc: "Pengiriman ke customer",
+      status: "pending",
+      progress: 0,
+      image: null as string | null,
+    },
+  ]);
+  const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
+  const [completedQty, setCompletedQty] = useState(320);
+  const [totalProduksi, setTotalProduksi] = useState(500);
+  const [totalSelesai, setTotalSelesai] = useState(320);
+  const [totalReject, setTotalReject] = useState(12);
+  const [rejectQty, setRejectQty] = useState(0);
+  const [editSpecification, setEditSpecification] = useState(false);
+  const [productionSpecification, setProductionSpecification] = useState(
+    `- Bordir presisi logo dada kiri & lengan\n\n- Material kain pilihan kualitas premium heritage\n\n- Deadline produksi sebelum 25 Mei 2026\n\n- Quality control ketat per unit produksi`
+  );
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setUploadedPhoto(imageUrl);
+    }
+  };
 
   const printInvoice = () => {
     const printContents = document.getElementById("invoice-content")?.innerHTML;
@@ -171,13 +298,117 @@ export default function POS() {
   };
 
   const cancelOrder = () => {
-    if (window.confirm("Batalkan seluruh order?")) {
-      setCart([]);
+    const confirmCancel = window.confirm(
+      "Yakin ingin membatalkan seluruh order?"
+    );
+    if (!confirmCancel) return;
+    setCart([]);
+    setOrderStatus("CANCELED");
+    setPaymentAmount(0);
+    setPaymentStatus("Belum Bayar");
+    setProductionNotes("");
+    setShowInvoice(false);
+    setShowNextStep(false);
+    setShowProductionTracking(false);
+    alert("Order berhasil dibatalkan");
+  };
+
+  const holdOrder = () => {
+    if (cart.length === 0) {
+      alert("Keranjang kosong");
+      return;
+    }
+    const newDraft = {
+      id: Date.now(),
+      items: cart,
+      total,
+      createdAt: new Date(),
+      status: "DRAFT",
+    };
+    setDraftOrders([...draftOrders, newDraft]);
+    setOrderStatus("DRAFT");
+    setCart([]);
+    alert("Order berhasil disimpan ke draft");
+  };
+
+  const continueDraft = (draft: any) => {
+    setCart(draft.items);
+    setOrderStatus("ACTIVE");
+    // hapus dari draft
+    setDraftOrders(draftOrders.filter((item) => item.id !== draft.id));
+    alert("Draft berhasil dilanjutkan");
+  };
+
+  const deleteDraft = (id: number) => {
+    const confirmDelete = window.confirm("Hapus draft ini?");
+    if (!confirmDelete) return;
+    setDraftOrders(draftOrders.filter((draft) => draft.id !== id));
+  };
+
+  const saveProductionUpdate = () => {
+    const updatedWorkflow = workflowData.map((item) => {
+      if (item.title === selectedWorkflow) {
+        return {
+          ...item,
+          status: workflowStatus as any,
+          progress: Number(productionProgress),
+          desc: `${completedQty} pcs selesai ${selectedWorkflow.toLowerCase()}`,
+          image: uploadedPhoto,
+        };
+      }
+      return item;
+    });
+    setWorkflowData(updatedWorkflow);
+    setTotalSelesai(Number(completedQty));
+    setTotalReject(Number(rejectQty));
+    setShowUpdateProduksi(false);
+    alert("Progress produksi berhasil diupdate");
+  };
+
+  const printSuratKerja = () => {
+    const printContents = document.getElementById("surat-kerja-content")?.innerHTML;
+    const win = window.open("", "", "width=900,height=900");
+    if (win) {
+      win.document.write(`
+        <html>
+          <head>
+            <title>Surat Kerja</title>
+            <style>
+              body{
+                font-family: Arial;
+                padding:40px;
+              }
+              .no-print{
+                display:none !important;
+              }
+              textarea{
+                display:none !important;
+              }
+              button{
+                display:none !important;
+              }
+            </style>
+          </head>
+          <body>
+            ${printContents}
+          </body>
+        </html>
+      `)
+      win.document.close();
+      win.print();
     }
   };
 
   const total = cart.reduce((sum, item) => item.canceled ? sum : sum + item.price * item.qty, 0);
   const remainingPayment = total - paymentAmount;
+
+  const overallProgress = Math.round(
+    workflowData.reduce((acc, item) => acc + item.progress, 0) / workflowData.length
+  );
+
+  const circleCircumference = 439;
+  const progressOffset = circleCircumference - (overallProgress / 100) * circleCircumference;
+  const totalPending = totalProduksi - totalSelesai - totalReject;
 
   return (
     <div className="p-8 space-y-6">
@@ -287,6 +518,71 @@ export default function POS() {
                 </div>
               </motion.div>
             ))}
+          </div>
+
+          {/* ================= DRAFT ORDER LIST ================= */}
+          <div className="bg-white rounded-2xl shadow p-5 mt-5">
+            {/* HEADER */}
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <h2 className="text-xl font-bold">Draft Order</h2>
+                <p className="text-sm text-slate-500">Order yang disimpan sementara</p>
+              </div>
+              <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-semibold">
+                {draftOrders.length} Draft
+              </span>
+            </div>
+
+            {/* EMPTY */}
+            {draftOrders.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="text-5xl mb-3">📂</div>
+                <p className="text-slate-400">Belum ada draft order</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {draftOrders.map((draft) => (
+                  <div
+                    key={draft.id}
+                    className="border border-slate-100 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 hover:border-red-100 transition-colors"
+                  >
+                    {/* LEFT */}
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <h3 className="font-bold text-lg text-slate-800">Draft #{draft.id}</h3>
+                        <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-xs font-semibold uppercase tracking-widest">
+                          DRAFT
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm text-slate-500 space-y-1 font-medium">
+                        <p>Total Item: {draft.items.length}</p>
+                        <p>Total: Rp {draft.total.toLocaleString("id-ID")}</p>
+                        <p>{new Date(draft.createdAt).toLocaleString("id-ID")}</p>
+                      </div>
+                    </div>
+
+                    {/* RIGHT */}
+                    <div className="flex gap-3 flex-wrap">
+                      {/* LANJUTKAN */}
+                      <button
+                        onClick={() => continueDraft(draft)}
+                        className="px-5 py-3 rounded-xl bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition"
+                      >
+                        Lanjutkan
+                      </button>
+
+                      {/* HAPUS */}
+                      <button
+                        onClick={() => deleteDraft(draft.id)}
+                        className="px-5 py-3 rounded-xl border border-red-200 text-red-700 font-bold uppercase tracking-widest text-[10px] hover:bg-red-50 transition"
+                      >
+                        Hapus
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -431,6 +727,7 @@ export default function POS() {
                 
                 <div className="grid grid-cols-2 gap-3">
                   <button 
+                    onClick={holdOrder}
                     className="py-4 text-heritage-red border border-heritage-red/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-red-50 transition-all disabled:opacity-30 disabled:pointer-events-none"
                     disabled={cart.length === 0}
                   >
@@ -677,14 +974,18 @@ export default function POS() {
 
                 <div className="mt-12">
                   <h2 className="text-xs font-bold text-slate-400 uppercase tracking-[0.3em] mb-8">Progress Workflow</h2>
-                  <div className="space-y-0">
-                    <WorkflowItem step="1" title="Invoice & Surat Kerja" desc="Invoice dan surat kerja berhasil dibuat" status="done" />
-                    <WorkflowItem step="2" title="Pengadaan Kain" desc="Material produksi telah diterima" status="done" />
-                    <WorkflowItem step="3" title="Potong Kain" desc="500 pola berhasil dipotong" status="done" />
-                    <WorkflowItem step="4" title="Bordir Logo" desc="320 pcs selesai bordir logo" status="progress" progress={64} />
-                    <WorkflowItem step="5" title="Jahit Produksi" desc="Menunggu proses bordir selesai" status="pending" />
-                    <WorkflowItem step="6" title="Quality Control" desc="QC final produksi" status="pending" />
-                    <WorkflowItem step="7" title="Packing & Delivery" desc="Pengiriman ke customer" status="pending" />
+                  <div className="space-y-8">
+                    {workflowData.map((item) => (
+                      <WorkflowItem
+                        key={item.step}
+                        step={item.step}
+                        title={item.title}
+                        desc={item.desc}
+                        status={item.status as 'done' | 'progress' | 'pending'}
+                        progress={item.progress}
+                        image={item.image}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
@@ -694,14 +995,25 @@ export default function POS() {
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
                   <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Production Yield</h2>
                   <div className="flex justify-center py-4">
-                    <div className="relative w-48 h-48">
-                      <svg className="w-48 h-48 rotate-[-90deg]">
-                        <circle cx="96" cy="96" r="80" stroke="#f1f5f9" strokeWidth="16" fill="none" />
-                        <circle cx="96" cy="96" r="80" stroke="#b91c1c" strokeWidth="16" fill="none" strokeDasharray="502" strokeDashoffset={502 * (1 - 0.64)} strokeLinecap="round" className="transition-all duration-1000" />
+                    <div className="relative w-48 h-48 flex items-center justify-center">
+                      <svg className="w-44 h-44 rotate-[-90deg]">
+                        <circle cx="88" cy="88" r="70" stroke="#f1f5f9" strokeWidth="14" fill="none" />
+                        <circle 
+                          cx="88" 
+                          cy="88" 
+                          r="70" 
+                          stroke="#DC2626" 
+                          strokeWidth="14" 
+                          fill="none" 
+                          strokeDasharray={circleCircumference} 
+                          strokeDashoffset={progressOffset} 
+                          strokeLinecap="round" 
+                          className="transition-all duration-1000" 
+                        />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <h2 className="text-5xl font-black text-red-700 tracking-tighter">64%</h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Status</p>
+                        <h2 className="text-5xl font-black text-red-700 tracking-tighter">{overallProgress}%</h2>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Overall</p>
                       </div>
                     </div>
                   </div>
@@ -710,18 +1022,24 @@ export default function POS() {
                 <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 mt-6">
                   <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">QC Summary</h2>
                   <div className="space-y-2">
-                    <SummaryItem title="Total Produksi" value="500 pcs" />
-                    <SummaryItem title="Selesai" value="320 pcs" color="text-green-600" />
-                    <SummaryItem title="Reject" value="12 pcs" color="text-red-600" />
-                    <SummaryItem title="Pending" value="168 pcs" color="text-amber-600" />
+                    <SummaryItem title="Total Produksi" value={`${totalProduksi} pcs`} />
+                    <SummaryItem title="Selesai" value={`${totalSelesai} pcs`} color="text-green-600" />
+                    <SummaryItem title="Reject" value={`${totalReject} pcs`} color="text-red-600" />
+                    <SummaryItem title="Pending" value={`${totalPending} pcs`} color="text-amber-600" />
                   </div>
                 </div>
 
                 <div className="mt-8 space-y-3">
-                  <button className="w-full bg-red-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition transform hover:-translate-y-1">
+                  <button 
+                    onClick={() => setShowUpdateProduksi(true)}
+                    className="w-full bg-red-700 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition transform hover:-translate-y-1"
+                  >
                     Update Produksi
                   </button>
-                  <button className="w-full bg-white border border-slate-200 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition">
+                  <button 
+                    onClick={() => setShowSuratKerja(true)}
+                    className="w-full bg-white border border-slate-200 text-slate-600 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition"
+                  >
                     Print Surat Kerja
                   </button>
                   <button 
@@ -745,7 +1063,7 @@ export default function POS() {
             className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
           >
             {/* HEADER */}
-            <div className="border-b border-slate-50 p-8 flex justify-between items-center bg-slate-50/20">
+            <div className="border-b border-slate-50 p-8 flex justify-between items-center bg-slate-50/20 no-print">
               <div>
                 <h1 className="text-3xl font-black text-slate-800 tracking-tighter">Invoice Order</h1>
                 <p className="text-slate-500 font-medium mt-1">Manufacturing Custom Order Heritage</p>
@@ -808,11 +1126,11 @@ export default function POS() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-6">
                   <div>
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-4 opacity-50">
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Catatan Produksi</h3>
                       <button
                         onClick={() => setEditNotes(!editNotes)}
-                        className="text-[10px] text-red-700 font-bold uppercase tracking-widest hover:underline no-print"
+                        className="text-red-700 font-semibold text-sm no-print"
                       >
                         {editNotes ? "Simpan" : "Edit"}
                       </button>
@@ -872,7 +1190,7 @@ export default function POS() {
             </div>
 
             {/* FOOTER */}
-            <div className="border-t border-slate-50 p-8 flex flex-col sm:flex-row gap-3 justify-end items-center bg-slate-50/10">
+            <div className="border-t border-slate-50 p-8 flex flex-col sm:flex-row gap-3 justify-end items-center bg-slate-50/10 no-print">
               <button
                 onClick={() => setShowInvoice(false)}
                 className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-slate-200 text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-white transition"
@@ -999,6 +1317,287 @@ export default function POS() {
                 className="px-8 py-4 rounded-2xl bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition"
               >
                 Simpan Status
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ================= UPDATE PRODUKSI MODAL ================= */}
+      {showUpdateProduksi && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[500] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100"
+          >
+            {/* HEADER */}
+            <div className="border-b border-slate-50 p-8 bg-slate-50/20 flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-black text-slate-800 tracking-tighter">Update Produksi</h2>
+                <p className="text-slate-500 font-medium mt-1">Update progress workflow produksi realtime</p>
+              </div>
+              <button
+                onClick={() => setShowUpdateProduksi(false)}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-2xl text-slate-400 hover:text-slate-800 transition"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* CONTENT */}
+            <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* PILIH TAHAP */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tahap Produksi</label>
+                <select
+                  value={selectedWorkflow}
+                  onChange={(e) => setSelectedWorkflow(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none transition-all appearance-none"
+                >
+                  <option>Invoice & Surat Kerja</option>
+                  <option>Pengadaan Kain</option>
+                  <option>Potong Kain</option>
+                  <option>Bordir Logo</option>
+                  <option>Jahit Produksi</option>
+                  <option>Quality Control</option>
+                  <option>Packing & Delivery</option>
+                </select>
+              </div>
+
+              {/* STATUS */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Produksi</label>
+                <select
+                  value={workflowStatus}
+                  onChange={(e) => setWorkflowStatus(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none transition-all appearance-none"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="progress">Progress</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+
+              {/* PROGRESS */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Produksi (%)</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={productionProgress}
+                  onChange={(e) => setProductionProgress(Number(e.target.value))}
+                  className="w-full accent-red-700"
+                />
+                <div className="flex justify-between items-center px-2">
+                  <span className="text-[10px] font-bold text-slate-400">0%</span>
+                  <span className="text-lg font-black text-red-700">{productionProgress}%</span>
+                  <span className="text-[10px] font-bold text-slate-400">100%</span>
+                </div>
+              </div>
+
+              {/* JUMLAH */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Produksi</label>
+                    <input 
+                      type="number" 
+                      value={totalProduksi} 
+                      onChange={(e) => setTotalProduksi(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none" 
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Selesai</label>
+                    <input 
+                      type="number" 
+                      value={completedQty} 
+                      onChange={(e) => setCompletedQty(Number(e.target.value))} 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none" 
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reject</label>
+                    <input 
+                      type="number" 
+                      value={rejectQty} 
+                      onChange={(e) => setRejectQty(Number(e.target.value))}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none" 
+                    />
+                 </div>
+              </div>
+
+              {/* FOTO */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Upload Foto Progress</label>
+                <label className="border-2 border-dashed border-slate-200 rounded-2xl p-10 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-red-200 transition-all group">
+                   <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">📸</div>
+                   <p className="font-bold text-slate-800 text-sm">Upload Foto Produksi</p>
+                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">JPG, PNG (Max 5MB)</p>
+                   <input type="file" className="hidden" onChange={handlePhotoUpload} />
+                </label>
+                {uploadedPhoto && (
+                  <div className="mt-4 relative group w-40 h-40">
+                    <img
+                      src={uploadedPhoto}
+                      alt="preview"
+                      className="w-40 h-40 object-cover rounded-2xl border border-slate-100 shadow-sm"
+                    />
+                    <button 
+                      onClick={() => setUploadedPhoto(null)}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* NOTES */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Catatan Produksi</label>
+                <textarea
+                  rows={4}
+                  placeholder="Catatan update produksi..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium text-slate-600 focus:outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="border-t border-slate-50 p-8 flex justify-end gap-3 bg-slate-50/10">
+              <button
+                onClick={() => setShowUpdateProduksi(false)}
+                className="px-8 py-4 rounded-2xl border border-slate-200 text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-white transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={saveProductionUpdate}
+                className="px-8 py-4 rounded-2xl bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition"
+              >
+                Simpan Update
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ================= SURAT KERJA MODAL ================= */}
+      {showSuratKerja && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[600] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh]"
+          >
+            {/* HEADER */}
+            <div className="border-b border-slate-50 p-8 flex justify-between items-center bg-slate-50/20 no-print">
+              <div>
+                <h1 className="text-3xl font-black text-slate-800 tracking-tighter">Surat Kerja Produksi</h1>
+                <p className="text-slate-500 font-medium mt-1">Manufacturing Production Sheet Heritage</p>
+              </div>
+              <button
+                onClick={() => setShowSuratKerja(false)}
+                className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-2xl text-slate-400 hover:text-slate-800 transition"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* CONTENT */}
+            <div id="surat-kerja-content" className="p-10 space-y-10 overflow-y-auto">
+              <div className="flex justify-between items-start border-b-2 border-slate-100 pb-10 mb-10">
+                <div className="header">
+                   <h1 className="text-4xl font-black text-slate-800 tracking-tighter">SURAT KERJA</h1>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Baloeng Gedhe Manufacturing</p>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-2xl font-black text-red-700 tracking-tighter">#SK-2026-001</h2>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">11 Mei 2026</p>
+                </div>
+              </div>
+
+              {/* INFO */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Customer</p>
+                  <h3 className="font-extrabold text-slate-800 text-base">{companyName || "PT Patra Niaga"}</h3>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Produk</p>
+                  <h3 className="font-extrabold text-slate-800 text-base">{cart[0]?.name || "PDH Custom"}</h3>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quantity</p>
+                  <h3 className="font-extrabold text-slate-800 text-base">500 Pcs</h3>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Deadline</p>
+                  <h3 className="font-extrabold text-red-700 text-base">25 Mei 2026</h3>
+                </div>
+              </div>
+
+              {/* SPESIFIKASI PRODUKSI */}
+              <div>
+                <div className="flex justify-between items-center mb-4 opacity-50">
+                  <h2 className="font-bold text-xl">Spesifikasi Produksi</h2>
+                  <button
+                    onClick={() => setEditSpecification(!editSpecification)}
+                    className="text-red-700 font-semibold text-sm no-print"
+                  >
+                    {editSpecification ? "Simpan" : "Edit"}
+                  </button>
+                </div>
+
+                {/* EDIT MODE */}
+                {editSpecification ? (
+                  <textarea
+                    value={productionSpecification}
+                    onChange={(e) => setProductionSpecification(e.target.value)}
+                    rows={8}
+                    className="w-full border rounded-2xl p-5 text-sm no-print"
+                  />
+                ) : (
+                  <div className="bg-gray-50 rounded-2xl p-5 whitespace-pre-line text-sm text-gray-700">
+                    {productionSpecification}
+                  </div>
+                )}
+
+                {/* PRINT ONLY */}
+                <div className="print-only whitespace-pre-line text-sm text-gray-700 mt-4">
+                  {productionSpecification}
+                </div>
+              </div>
+
+              {/* WORKFLOW */}
+              <div>
+                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Workflow Produksi</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <WorkflowPrint step="1" title="Pengadaan Kain" />
+                  <WorkflowPrint step="2" title="Potong Kain" />
+                  <WorkflowPrint step="3" title="Bordir Logo" />
+                  <WorkflowPrint step="4" title="Jahit Produksi" />
+                  <WorkflowPrint step="5" title="Quality Control" />
+                  <WorkflowPrint step="6" title="Packing & Delivery" />
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className="border-t border-slate-50 p-8 flex justify-end gap-3 bg-slate-50/10 no-print">
+              <button
+                onClick={() => setShowSuratKerja(false)}
+                className="px-8 py-4 rounded-2xl border border-slate-200 text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-white transition"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={printSuratKerja}
+                className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg hover:bg-black transition"
+              >
+                Print Surat Kerja
               </button>
             </div>
           </motion.div>

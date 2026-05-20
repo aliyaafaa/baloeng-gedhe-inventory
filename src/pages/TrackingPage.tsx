@@ -10,14 +10,130 @@ import {
 
 import { useState } from "react"
 import { motion, AnimatePresence } from "motion/react"
+import { useApp } from "../context/AppContext"
 
 export default function TrackingPage() {
 
-  const [selectedBatch, setSelectedBatch] =
-    useState(1)
+  const { materialDrafts, orders } = useApp()
+
+  const [searchOrder, setSearchOrder] = useState("")
+  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+
+  const productionOrders = orders.filter(
+    (order) => order.status !== "Draft"
+  )
+
+  const filteredOrders = productionOrders.filter((order) => {
+    const keyword = searchOrder.toLowerCase()
+
+    return (
+      order.customer?.toLowerCase().includes(keyword) ||
+      order.product?.toLowerCase().includes(keyword)
+    )
+  })
+
+  const activeOrder = selectedOrder || filteredOrders[0]
+
+  const getDaysLeft = (deadline?: string) => {
+    if (!deadline) return "-"
+
+    const today = new Date()
+    const dueDate = new Date(deadline)
+
+    if (isNaN(dueDate.getTime())) return deadline;
+
+    today.setHours(0, 0, 0, 0)
+    dueDate.setHours(0, 0, 0, 0)
+
+    const diff = dueDate.getTime() - today.getTime()
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+
+    if (days < 0) return `Terlambat ${Math.abs(days)} hari`
+    if (days === 0) return "Deadline hari ini"
+    return `${days} hari lagi`
+  }
+
+  const getDeadlineInfo = (createdAt: any, deadline: any) => {
+    if (!deadline) {
+      return {
+        label: "-",
+        percent: 0,
+        status: "none",
+      }
+    }
+
+    const start = new Date(createdAt || new Date())
+    const end = new Date(deadline)
+    const today = new Date()
+
+    start.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    const totalDays = Math.max(
+      Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)),
+      1
+    )
+
+    const remainingDays = Math.ceil(
+      (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    const usedDays = totalDays - remainingDays
+
+    const percent = Math.min(
+      Math.max(Math.round((usedDays / totalDays) * 100), 0),
+      100
+    )
+
+    if (remainingDays < 0) {
+      return {
+        label: `Terlambat ${Math.abs(remainingDays)} hari`,
+        percent: 100,
+        status: "late",
+      }
+    }
+
+    if (remainingDays === 0) {
+      return {
+        label: "Deadline hari ini",
+        percent,
+        status: "today",
+      }
+    }
+
+    return {
+      label: `${remainingDays} hari lagi`,
+      percent,
+      status: "safe",
+    }
+  }
+
+  const getMaterialProgress = (orderId: number) => {
+    const draft = materialDrafts.find(
+      (item) => item.orderId === orderId
+    )
+
+    if (!draft) return 0
+
+    const kain = draft.items.find(
+      (item) => item.category === "Kain"
+    )
+
+    if (!kain || !kain.volumeNeed) return 0
+
+    return Math.min(
+      Math.round(
+        (Number(kain.volumeBought || 0) /
+          Number(kain.volumeNeed || 1)) *
+          100
+      ),
+      100
+    )
+  }
 
   const [workflowData, setWorkflowData] =
-    useState([
+    useState<any[]>([
 
       {
         id: 1,
@@ -206,11 +322,34 @@ export default function TrackingPage() {
       },
     ])
 
-  const selectedData =
-    workflowData.find(
-      (item) =>
-        item.id === selectedBatch
-    ) || workflowData[0];
+  const getActiveWorkflow = () => {
+    if (!activeOrder) return null;
+    
+    let found = workflowData.find(item => item.id === activeOrder.id);
+    if (!found) {
+      // Return a dynamically generated workflow layout matching activeOrder metadata
+      return {
+        id: activeOrder.id,
+        customer: activeOrder.customer,
+        product: activeOrder.product,
+        qty: activeOrder.qty,
+        deadline: activeOrder.deadline || "TBA",
+        progress: activeOrder.progress || 10,
+        status: activeOrder.status || "Sedang Produksi",
+        steps: [
+          { id: 1, title: "Pengadaan Kain", desc: "Kain drill dan bahan pelengkap tersedia.", status: "progress", progress: 10, icon: Package },
+          { id: 2, title: "Potong Kain", desc: "Pola jahitan sedang disiapkan.", status: "pending", progress: 0, icon: Scissors },
+          { id: 3, title: "Bordir Logo", desc: "Logo dada dan lengan selesai.", status: "pending", progress: 0, icon: Shirt },
+          { id: 4, title: "Jahit Produksi", desc: "Proses jahit massal.", status: "pending", progress: 0, icon: Pencil },
+          { id: 5, title: "Quality Control", desc: "Pengecekan akhir kualitas jahitan.", status: "pending", progress: 0, icon: Search },
+          { id: 6, title: "Packing & Delivery", desc: "Pengemasan aman dan pengiriman ke alamat tujuan.", status: "pending", progress: 0, icon: Truck }
+        ]
+      };
+    }
+    return found;
+  }
+
+  const selectedData = getActiveWorkflow();
 
   /* ================= EDIT MODAL ================= */
 
@@ -243,21 +382,30 @@ export default function TrackingPage() {
     })
 
   const openBatchEdit = () => {
+    if (!selectedData) return;
     setBatchForm({
-      customer: selectedData.customer,
-      product: selectedData.product,
-      qty: selectedData.qty,
-      deadline: selectedData.deadline,
-      status: selectedData.status,
+      customer: selectedData.customer || "",
+      product: selectedData.product || "",
+      qty: selectedData.qty || 0,
+      deadline: selectedData.deadline || "",
+      status: selectedData.status || "",
     })
     setShowBatchEdit(true)
   }
 
   const saveBatchEdit = () => {
+    if (!activeOrder) return;
+
+    const exists = workflowData.some(item => item.id === activeOrder.id);
+    let currentData = workflowData;
+    if (!exists && selectedData) {
+      currentData = [...workflowData, selectedData];
+    }
+
     const updated =
-      workflowData.map((batch) => {
+      currentData.map((batch) => {
         if (
-          batch.id === selectedBatch
+          batch.id === activeOrder.id
         ) {
           return {
             ...batch,
@@ -296,13 +444,21 @@ export default function TrackingPage() {
   /* ================= SAVE EDIT ================= */
 
   const saveStepEdit = () => {
+    if (!activeOrder) return;
+
+    const exists = workflowData.some(item => item.id === activeOrder.id);
+    let currentData = workflowData;
+    if (!exists && selectedData) {
+      currentData = [...workflowData, selectedData];
+    }
+
     const updated =
-      workflowData.map((batch) => {
+      currentData.map((batch) => {
         if (
-          batch.id === selectedBatch
+          batch.id === activeOrder.id
         ) {
           const updatedSteps =
-            batch.steps.map((step) => {
+            batch.steps.map((step: any) => {
               if (
                 step.id === selectedStepId
               ) {
@@ -326,7 +482,7 @@ export default function TrackingPage() {
           const avgProgress =
             Math.round(
               updatedSteps.reduce(
-                (acc, item) =>
+                (acc: number, item: any) =>
                   acc +
                   item.progress,
                 0
@@ -355,16 +511,23 @@ export default function TrackingPage() {
     stepId: number,
     newStatus: string
   ) => {
+    if (!activeOrder) return;
+
+    const exists = workflowData.some(item => item.id === activeOrder.id);
+    let currentData = workflowData;
+    if (!exists && selectedData) {
+      currentData = [...workflowData, selectedData];
+    }
 
     const updated =
-      workflowData.map((batch) => {
+      currentData.map((batch) => {
 
         if (
-          batch.id === selectedBatch
+          batch.id === activeOrder.id
         ) {
 
           const updatedSteps =
-            batch.steps.map((step) => {
+            batch.steps.map((step: any) => {
 
               if (
                 step.id === stepId
@@ -392,7 +555,7 @@ export default function TrackingPage() {
             Math.round(
 
               updatedSteps.reduce(
-                (acc, item) =>
+                (acc: number, item: any) =>
                   acc +
                   item.progress,
                 0
@@ -419,6 +582,8 @@ export default function TrackingPage() {
     setWorkflowData(updated)
   }
 
+  const materialProgress = activeOrder ? getMaterialProgress(activeOrder.id) : 0;
+
   return (
 
     <div className="p-6 sm:p-8">
@@ -440,306 +605,382 @@ export default function TrackingPage() {
 
       </div>
 
-      {/* ================= BATCH LIST ================= */}
+      {/* ================= BATCH LIST TABLE ================= */}
+      <div className="bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 mb-6 mt-8">
 
-      <div className="flex gap-4 overflow-auto mt-8 pb-2">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
+          <div>
+            <h2 className="text-xl font-bold">Daftar Order Produksi</h2>
+            <p className="text-gray-500 text-sm">
+              Pilih order untuk melihat dan update workflow produksi
+            </p>
+          </div>
 
-        {workflowData.map((batch) => (
+          <input
+            type="text"
+            value={searchOrder}
+            onChange={(e) => setSearchOrder(e.target.value)}
+            placeholder="Cari customer / produk..."
+            className="w-full md:w-[320px] border border-gray-200 rounded-2xl px-4 py-3"
+          />
+        </div>
 
-          <button
-            key={batch.id}
-            onClick={() =>
-              setSelectedBatch(
-                batch.id
-              )
-            }
-            className={`
-              min-w-[320px]
-              rounded-3xl
-              p-5
-              border
-              transition
-              text-left
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[850px]">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-widest text-gray-400 border-b border-gray-200">
+                <th className="py-4">Customer</th>
+                <th>Produk</th>
+                <th>Qty</th>
+                <th>Deadline</th>
+                <th>Sisa Waktu</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
 
-              ${
-                selectedBatch ===
-                batch.id
-                  ? "bg-red-700 text-white border-red-700"
-                  : "bg-white border-gray-200"
-              }
-            `}
-          >
+            <tbody>
+              {filteredOrders.map((order) => {
+                // Determine current progress
+                const exists = workflowData.find(item => item.id === order.id);
+                const progressToDisplay = exists ? exists.progress : (order.progress || 0);
+                const statusToDisplay = exists ? exists.status : (order.status || "Sedang Produksi");
+                const deadlineInfo = getDeadlineInfo(order.createdAt, order.deadline);
 
-            <div className="flex justify-between items-start">
+                return (
+                  <tr
+                    key={order.id}
+                    className={`border-b border-gray-100 hover:bg-gray-50 ${
+                      activeOrder?.id === order.id ? "bg-red-50" : ""
+                    }`}
+                  >
+                    <td className="py-4 font-semibold">
+                      {order.customer || "Guest"}
+                    </td>
+
+                    <td>{order.product}</td>
+
+                    <td>{order.qty || 1} pcs</td>
+
+                    <td>{order.deadline || "-"}</td>
+
+                    <td>
+                      <span
+                        className={`px-3 py-2 rounded-full text-xs font-semibold ${
+                          deadlineInfo.status === "late"
+                            ? "bg-red-100 text-red-700"
+                            : deadlineInfo.status === "today"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {deadlineInfo.label}
+                      </span>
+                    </td>
+
+                    <td>
+                      <div className="w-32 bg-gray-100 rounded-full h-2">
+                        <div
+                          className="h-2 rounded-full bg-red-700"
+                          style={{ width: `${progressToDisplay}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {progressToDisplay}%
+                      </p>
+                    </td>
+
+                    <td>
+                      <span className="px-3 py-2 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">
+                        {statusToDisplay}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        onClick={() => setSelectedOrder(order)}
+                        className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold"
+                      >
+                        Pantau
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ================= DETAIL WORKFLOW ================= */}
+      {activeOrder ? (
+        <div className="bg-white rounded-3xl border border-gray-200 p-5 sm:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+            <InfoBox title="Customer" value={activeOrder.customer || "Guest"} />
+            <InfoBox title="Produk" value={activeOrder.product} />
+            <InfoBox title="Quantity" value={`${activeOrder.qty || 1} pcs`} />
+            <InfoBox title="Deadline" value={activeOrder.deadline || "-"} />
+
+          </div>
+
+          {/* WORKFLOW */}
+          <div className="mt-10">
+
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
 
               <div>
 
-                <h2 className="font-bold text-2xl">
-                  {batch.product}
+                <h2 className="text-3xl font-bold">
+                  Workflow Produksi
                 </h2>
 
-                <p
-                  className={`
-                    mt-2
-
-                    ${
-                      selectedBatch ===
-                      batch.id
-                        ? "text-red-100"
-                        : "text-gray-500"
-                    }
-                  `}
-                >
-                  {batch.customer}
+                <p className="text-gray-500 mt-2">
+                  Update proses realtime
                 </p>
 
               </div>
 
-              <span
-                className="
-                  text-xs
-                  px-3
-                  py-2
-                  rounded-full
-                  bg-white/20
-                "
-              >
-                {batch.progress}%
-              </span>
-
-            </div>
-
-            {/* PROGRESS */}
-            <div
-              className={`
-                w-full
-                h-3
-                rounded-full
-                mt-5
-
-                ${
-                  selectedBatch ===
-                  batch.id
-                    ? "bg-white/20"
-                    : "bg-gray-100"
-                }
-              `}
-            >
-
-              <div
-                className="h-3 rounded-full bg-white"
-                style={{
-                  width:
-                    `${batch.progress}%`
-                }}
-              ></div>
-
-            </div>
-
-          </button>
-
-        ))}
-
-      </div>
-
-      {/* ================= DETAIL ================= */}
-
-      <div
-        className="
-          bg-white
-          rounded-[32px]
-          p-6
-          sm:p-8
-          mt-8
-          border
-          border-gray-200
-        "
-      >
-
-        {/* TOP */}
-        <div
-          className="
-            grid
-            grid-cols-1 md:grid-cols-2
-            xl:grid-cols-4
-            gap-5
-          "
-        >
-
-          <InfoCard
-            title="Customer"
-            value={
-              selectedData.customer
-            }
-          />
-
-          <InfoCard
-            title="Produk"
-            value={
-              selectedData.product
-            }
-          />
-
-          <InfoCard
-            title="Quantity"
-            value={`${selectedData.qty} pcs`}
-          />
-
-          <InfoCard
-            title="Deadline"
-            value={
-              selectedData.deadline
-            }
-          />
-
-        </div>
-
-        {/* WORKFLOW */}
-        <div className="mt-10">
-
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-
-            <div>
-
-              <h2 className="text-3xl font-bold">
-                Workflow Produksi
-              </h2>
-
-              <p className="text-gray-500 mt-2">
-                Update proses realtime
-              </p>
-
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={openBatchEdit}
-                className="
-                  px-5
-                  py-3
-                  rounded-2xl
-                  bg-blue-100
-                  text-blue-700
-                  font-semibold
-                  hover:bg-blue-200
-                  transition-colors
-                "
-              >
-                Edit Batch
-              </button>
-
-              <div
-                className="
-                  px-5
-                  py-3
-                  rounded-full
-                  bg-orange-100
-                  text-orange-700
-                  font-semibold
-                "
-              >
-                {selectedData.status}
-              </div>
-            </div>
-
-          </div>
-
-          {/* STEPS */}
-          <div className="space-y-8 mt-10">
-
-            {selectedData.steps.map(
-              (step) => {
-
-                const Icon =
-                  step.icon
-
-                return (
-
-                  <div
-                    key={step.id}
+              {selectedData && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={openBatchEdit}
                     className="
-                      border
-                      border-gray-100
-                      rounded-3xl
-                      p-5
+                      px-5
+                      py-3
+                      rounded-2xl
+                      bg-blue-100
+                      text-blue-700
+                      font-semibold
+                      hover:bg-blue-200
+                      transition-colors
                     "
                   >
+                    Edit Batch
+                  </button>
 
-                    <div className="flex justify-between gap-5 flex-wrap">
+                  <div
+                    className="
+                      px-5
+                      py-3
+                      rounded-full
+                      bg-orange-100
+                      text-orange-700
+                      font-semibold
+                    "
+                  >
+                    {selectedData.status}
+                  </div>
+                </div>
+              )}
 
-                      {/* LEFT */}
-                      <div className="flex gap-5">
+            </div>
 
-                        <div
-                          className={`
-                            w-14
-                            h-14
-                            rounded-2xl
-                            flex
-                            items-center
-                            justify-center
+            {/* STEPS */}
+            {selectedData && (
+              <div className="space-y-8 mt-10">
 
-                            ${
-                              step.status ===
-                              "done"
-                                ? "bg-green-100 text-green-700"
+                {selectedData.steps.map(
+                  (step: any) => {
 
-                                : step.status ===
-                                  "progress"
-                                ? "bg-orange-100 text-orange-700"
+                    const Icon =
+                      step.icon
 
-                                : "bg-gray-100 text-gray-400"
-                            }
-                          `}
-                        >
+                    const isKain = step.title === "Pengadaan Kain";
+                    const progressPercent = isKain ? materialProgress : step.progress;
 
-                          <Icon size={24} />
+                    return (
 
-                        </div>
+                      <div
+                        key={step.id}
+                        className="
+                          border
+                          border-gray-100
+                          rounded-3xl
+                          p-5
+                        "
+                      >
 
-                        <div>
+                        <div className="flex justify-between gap-5 flex-wrap">
 
-                          <h3 className="text-2xl font-bold">
-                            {step.title}
-                          </h3>
+                          {/* LEFT */}
+                          <div className="flex gap-5">
 
-                          <p className="text-gray-500 mt-2">
+                            <div
+                              className={`
+                                w-14
+                                h-14
+                                rounded-2xl
+                                flex
+                                items-center
+                                justify-center
 
-                            {step.desc}
+                                ${
+                                  step.status ===
+                                  "done"
+                                    ? "bg-green-100 text-green-700"
 
-                          </p>
+                                    : step.status ===
+                                      "progress"
+                                    ? "bg-orange-100 text-orange-700"
 
-                          {/* PROGRESS */}
-                          <div className="mt-5">
+                                    : "bg-gray-100 text-gray-400"
+                                }
+                              `}
+                            >
 
-                            <div className="w-full sm:w-[250px] h-3 bg-gray-100 rounded-full">
-
-                              <div
-                                className={`
-                                  h-3
-                                  rounded-full
-
-                                  ${
-                                    step.status ===
-                                    "done"
-                                      ? "bg-green-500"
-
-                                      : "bg-orange-500"
-                                  }
-                                `}
-                                style={{
-                                  width:
-                                    `${step.progress}%`,
-                                }}
-                              ></div>
+                              <Icon size={24} />
 
                             </div>
 
-                            <p className="text-sm text-gray-400 mt-2">
+                            <div>
 
-                              {step.progress}% selesai
+                              <h3 className="text-2xl font-bold">
+                                {step.title}
+                              </h3>
 
-                            </p>
+                              <p className="text-gray-500 mt-2">
+
+                                {step.desc}
+
+                              </p>
+
+                              {/* PROGRESS */}
+                              <div className="mt-5">
+                                {isKain ? (
+                                  <>
+                                    <div className="w-full sm:w-[250px] bg-gray-100 rounded-full h-2 mt-4">
+                                      <div
+                                        className="h-2 rounded-full bg-red-700"
+                                        style={{ width: `${materialProgress}%` }}
+                                      />
+                                    </div>
+
+                                    <p className="text-xs text-gray-500 mt-2 font-semibold">
+                                      {materialProgress}% pengadaan material
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="w-full sm:w-[250px] h-3 bg-gray-100 rounded-full">
+
+                                      <div
+                                        className={`
+                                          h-3
+                                          rounded-full
+
+                                          ${
+                                            step.status ===
+                                            "done"
+                                              ? "bg-green-500"
+
+                                              : "bg-orange-500"
+                                          }
+                                        `}
+                                        style={{
+                                          width:
+                                            `${progressPercent}%`,
+                                        }}
+                                      ></div>
+
+                                    </div>
+
+                                    <p className="text-sm text-gray-400 mt-2">
+                                      {progressPercent}% selesai
+                                    </p>
+                                  </>
+                                )}
+
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                          {/* RIGHT */}
+                          <div className="flex gap-3 flex-wrap h-fit cursor-pointer">
+
+                            <button
+                              onClick={() =>
+                                openEditModal(step)
+                              }
+                              className="
+                                px-4
+                                py-3
+                                rounded-2xl
+                                bg-blue-100
+                                text-blue-700
+                                font-semibold
+                                hover:bg-blue-200
+                                transition-colors
+                              "
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                updateStepStatus(
+                                  step.id,
+                                  "done"
+                                )
+                              }
+                              className="
+                                px-4
+                                py-3
+                                rounded-2xl
+                                bg-green-100
+                                text-green-700
+                                font-semibold
+                                hover:bg-green-200
+                                transition-colors
+                              "
+                            >
+                              Selesai
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                updateStepStatus(
+                                  step.id,
+                                  "progress"
+                                )
+                              }
+                              className="
+                                px-4
+                                py-3
+                                rounded-2xl
+                                bg-orange-100
+                                text-orange-700
+                                font-semibold
+                                hover:bg-orange-200
+                                transition-colors
+                              "
+                            >
+                              Progress
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                updateStepStatus(
+                                  step.id,
+                                  "pending"
+                                )
+                              }
+                              className="
+                                px-4
+                                py-3
+                                rounded-2xl
+                                bg-gray-100
+                                text-gray-500
+                                font-semibold
+                                hover:bg-gray-200
+                                transition-colors
+                              "
+                            >
+                              Pending
+                            </button>
 
                           </div>
 
@@ -747,105 +988,22 @@ export default function TrackingPage() {
 
                       </div>
 
-                      {/* RIGHT */}
-                      <div className="flex gap-3 flex-wrap h-fit">
+                    )
+                  }
+                )}
 
-                        <button
-                          onClick={() =>
-                            openEditModal(step)
-                          }
-                          className="
-                            px-4
-                            py-3
-                            rounded-2xl
-                            bg-blue-100
-                            text-blue-700
-                            font-semibold
-                            hover:bg-blue-200
-                            transition-colors
-                          "
-                        >
-                          Edit
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            updateStepStatus(
-                              step.id,
-                              "done"
-                            )
-                          }
-                          className="
-                            px-4
-                            py-3
-                            rounded-2xl
-                            bg-green-100
-                            text-green-700
-                            font-semibold
-                            hover:bg-green-200
-                            transition-colors
-                          "
-                        >
-                          Selesai
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            updateStepStatus(
-                              step.id,
-                              "progress"
-                            )
-                          }
-                          className="
-                            px-4
-                            py-3
-                            rounded-2xl
-                            bg-orange-100
-                            text-orange-700
-                            font-semibold
-                            hover:bg-orange-200
-                            transition-colors
-                          "
-                        >
-                          Progress
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            updateStepStatus(
-                              step.id,
-                              "pending"
-                            )
-                          }
-                          className="
-                            px-4
-                            py-3
-                            rounded-2xl
-                            bg-gray-100
-                            text-gray-500
-                            font-semibold
-                            hover:bg-gray-200
-                            transition-colors
-                          "
-                        >
-                          Pending
-                        </button>
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                )
-              }
+              </div>
             )}
 
           </div>
 
         </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-gray-200 p-8 text-center text-gray-400">
+          Belum ada order produksi.
+        </div>
+      )}
 
-      </div>
 
       {/* ================= EDIT MODAL UI ================= */}
       <AnimatePresence>
@@ -1062,39 +1220,15 @@ export default function TrackingPage() {
 
 /* ================= COMPONENT ================= */
 
-function InfoCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: string | number;
-}) {
-
+function InfoBox({ title, value }: { title: string; value: string | number }) {
   return (
-
-    <div
-      className="
-        bg-gray-50
-        rounded-3xl
-        p-5
-      "
-    >
-
-      <p
-        className="
-          text-gray-400
-          uppercase
-          text-xs
-          tracking-[0.2em]
-        "
-      >
+    <div className="bg-gray-50 rounded-2xl p-5">
+      <p className="text-xs uppercase tracking-widest text-gray-400">
         {title}
       </p>
-
-      <h3 className="text-2xl font-bold mt-3">
+      <h3 className="font-bold text-lg mt-2">
         {value}
       </h3>
-
     </div>
   )
 }

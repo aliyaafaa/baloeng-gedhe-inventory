@@ -26,7 +26,7 @@ export default function ProductionMonitor() {
           <h1 className="text-2xl font-bold text-slate-900 leading-tight">
             Pantau Produksi
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium italic">
+          <p className="text-sm text-slate-500 mt-1 font-medium not-italic">
             Monitoring progress produksi setiap batch secara mendalam
           </p>
         </div>

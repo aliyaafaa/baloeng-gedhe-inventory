@@ -4,133 +4,78 @@ export default function DashboardPage() {
 
   const {
     orders,
-    financeData,
+    warehouseStock,
+    expenseRecords,
     productionList,
   } = useApp()
+
+  const totalIncome = orders.reduce(
+    (sum, order) => sum + Number(order.total || 0),
+    0
+  )
+
+  const totalExpense = expenseRecords.reduce(
+    (sum, item) => sum + Number(item.total || 0),
+    0
+  )
+
+  const netProfit = totalIncome - totalExpense
+
+  const produksiAktif = orders.filter(
+    (order) => order.status !== "Draft"
+  ).length
+
+  const formatRupiah = (value: number) => {
+    return `Rp ${Number(value || 0).toLocaleString("id-ID")}`
+  }
 
   return (
 
     <div className="p-6 sm:p-8">
 
       {/* HEADER */}
-      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-5">
-
-        <div>
-
-          <h1 className="text-4xl font-bold text-[#0F172A]">
-            Dashboard Baloeng Gedhe
-          </h1>
-
-          <p className="text-gray-500 mt-3 text-lg">
-            Ringkasan operasional dan keuangan hari ini
-          </p>
-
-        </div>
-
-        <button
-          className="
-            px-6
-            py-4
-            rounded-2xl
-            bg-white
-            border
-            border-gray-200
-            shadow-sm
-            font-semibold
-          "
-        >
-          Unduh Laporan
-        </button>
-
+      <div className="mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A]">
+          Dashboard Baloeng Gedhe
+        </h1>
+        <p className="text-gray-500 mt-2 not-italic">
+          Ringkasan operasional dan keuangan hari ini
+        </p>
       </div>
 
       {/* CARDS */}
-      <div
-        className="
-          grid
-          grid-cols-1
-          md:grid-cols-2
-          xl:grid-cols-4
-          gap-5
-          mt-10
-        "
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-8">
 
-        {/* PENDAPATAN */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+        <DashboardCard
+          title="Pendapatan"
+          value={formatRupiah(totalIncome)}
+          desc={orders.length === 0 ? "Belum ada pemasukan" : "+12.5% vs kemarin"}
+        />
 
-          <p className="text-gray-400 uppercase text-sm tracking-widest">
-            Pendapatan
-          </p>
+        <DashboardCard
+          title="Total Order"
+          value={orders.length}
+          desc="Order aktif"
+        />
 
-          <h2 className="text-5xl font-bold mt-5">
-            Rp {
-              financeData.income
-                .toLocaleString()
-            }
-          </h2>
+        <DashboardCard
+          title="Produksi Aktif"
+          value={produksiAktif}
+          desc="Workflow berjalan"
+        />
 
-          <p className="text-green-600 font-semibold mt-4">
-            +12.5% vs kemarin
-          </p>
+        <DashboardCard
+          title="Sisa Stok Gudang"
+          value={warehouseStock.length}
+          desc="Material tersedia"
+        />
 
-        </div>
-
-        {/* ORDER */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-
-          <p className="text-gray-400 uppercase text-sm tracking-widest">
-            Total Order
-          </p>
-
-          <h2 className="text-5xl font-bold mt-5">
-            {orders.length}
-          </h2>
-
-          <p className="text-red-700 font-semibold mt-4">
-            Order aktif
-          </p>
-
-        </div>
-
-        {/* PRODUKSI */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
-
-          <p className="text-gray-400 uppercase text-sm tracking-widest">
-            Produksi Aktif
-          </p>
-
-          <h2 className="text-5xl font-bold mt-5">
-            {productionList.length}
-          </h2>
-
-          <p className="text-green-600 font-semibold mt-4">
-            Workflow berjalan
-          </p>
-
-        </div>
-
-        {/* LABA */}
-        <div className="bg-[#111827] rounded-3xl p-6 shadow-sm text-white">
-
-          <p className="uppercase text-sm tracking-widest text-gray-300">
-            Laba Bersih
-          </p>
-
-          <h2 className="text-5xl font-bold mt-5">
-
-            Rp {
-              financeData.profit
-                .toLocaleString()
-            }
-
-          </h2>
-
-          <p className="text-red-400 font-semibold mt-4">
-            Manufacturing Profit
-          </p>
-
-        </div>
+        <DashboardCard
+          dark
+          title="Laba Bersih"
+          value={formatRupiah(netProfit)}
+          desc="Manufacturing Profit"
+        />
 
       </div>
 
@@ -247,7 +192,7 @@ export default function DashboardPage() {
 
             <MonitoringCard
               title="Rekap Omset"
-              value={`Rp ${financeData.income.toLocaleString()}`}
+              value={formatRupiah(totalIncome)}
               color="bg-blue-500"
             />
 
@@ -305,6 +250,48 @@ function MonitoringCard({
         {value}
       </span>
 
+    </div>
+  )
+}
+
+function DashboardCard({
+  title,
+  value,
+  desc,
+  dark,
+}: {
+  title: string;
+  value: string | number;
+  desc: string;
+  dark?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-3xl border p-5 min-h-[150px] overflow-hidden ${
+        dark
+          ? "bg-[#0F172A] text-white border-[#0F172A]"
+          : "bg-white text-[#0F172A] border-gray-200"
+      }`}
+    >
+      <p
+        className={`text-xs uppercase tracking-widest font-bold ${
+          dark ? "text-white" : "text-gray-400"
+        }`}
+      >
+        {title}
+      </p>
+
+      <h2 className="mt-5 text-2xl sm:text-3xl font-bold break-words leading-tight">
+        {value}
+      </h2>
+
+      <p
+        className={`text-sm mt-4 font-semibold ${
+          dark ? "text-red-300" : "text-green-600"
+        }`}
+      >
+        {desc}
+      </p>
     </div>
   )
 }

@@ -23,7 +23,7 @@ export default function Products() {
           <h1 className="text-2xl font-bold text-slate-900 leading-tight">
             Katalog Produk
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium italic">
+          <p className="text-sm text-slate-500 mt-1 font-medium not-italic">
             Daftar produk siap jual dan manajemen koleksi Baloeng Gedhe
           </p>
         </div>

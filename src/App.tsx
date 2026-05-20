@@ -4,7 +4,6 @@ import DashboardPage from "./pages/DashboardPage"
 import POSPage from "./pages/POSPage"
 import InventoryPage from "./pages/InventoryPage"
 import FinancePage from "./pages/FinancePage"
-import ProductionPage from "./pages/ProductionPage"
 import TrackingPage from "./pages/TrackingPage"
 
 import {
@@ -12,8 +11,8 @@ import {
   ShoppingCart,
   Boxes,
   Wallet,
-  Factory,
   Eye,
+  Bell,
 } from "lucide-react"
 
 export default function App() {
@@ -47,12 +46,6 @@ export default function App() {
     },
 
     {
-      id: "production",
-      label: "Produksi Massal",
-      icon: Factory,
-    },
-
-    {
       id: "tracking",
       label: "Pantau Produksi",
       icon: Eye,
@@ -74,9 +67,6 @@ export default function App() {
 
       case "finance":
         return <FinancePage />
-
-      case "production":
-        return <ProductionPage />
 
       case "tracking":
         return <TrackingPage />
@@ -111,14 +101,28 @@ export default function App() {
             Baloeng Gedhe
           </h1>
 
-          <p className="text-gray-400 mt-2">
-            Manufacturing OS
+          <p className="text-gray-400 mt-2 font-semibold">
+            by 2 BD03C TUP
           </p>
 
         </div>
 
         {/* MENU */}
-        <div className="mt-12 space-y-3">
+        <div className="mt-10 space-y-3">
+
+          {/* NOTIFIKASI */}
+          <button
+            onClick={() => alert("Tidak ada notifikasi baru untuk saat ini.")}
+            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-600 hover:bg-red-50 hover:text-red-700 transition text-left"
+          >
+            <span className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-red-700">
+              <Bell size={20} />
+            </span>
+
+            <span className="font-semibold">
+              Notifikasi
+            </span>
+          </button>
 
           {menus.map((menu) => {
 
@@ -144,13 +148,13 @@ export default function App() {
 
                   ${
                     activePage === menu.id
-                      ? "bg-red-50 text-red-700 font-semibold"
-                      : "hover:bg-gray-50 text-gray-600"
+                      ? "bg-red-50 text-red-700 font-bold"
+                      : "text-gray-600 hover:bg-red-50 hover:text-red-700"
                   }
                 `}
               >
 
-                <Icon size={22} />
+                <Icon size={20} />
 
                 <span>
                   {menu.label}
@@ -212,80 +216,15 @@ export default function App() {
       </aside>
 
       {/* MAIN */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 min-w-0 overflow-x-hidden bg-[#F8F9FB] flex flex-col">
 
         {/* TOPBAR */}
-        <div
-          className="
-            h-[90px]
-            bg-white
-            border-b
-            border-gray-200
-            px-4
-            sm:px-8
-            flex
-            items-center
-            justify-between
-          "
-        >
-
-          {/* SEARCH */}
-          <div className="w-full max-w-xl">
-
-            <input
-              type="text"
-              placeholder="Cari data produksi..."
-              className="
-                w-full
-                bg-gray-100
-                rounded-2xl
-                px-6
-                py-4
-                outline-none
-              "
-            />
-
-          </div>
-
-          {/* RIGHT */}
-          <div className="flex items-center gap-4 ml-5">
-
-            <div
-              className="
-                w-11
-                h-11
-                rounded-full
-                bg-gray-100
-                flex
-                items-center
-                justify-center
-              "
-            >
-              🔔
-            </div>
-
-            <div
-              className="
-                w-11
-                h-11
-                rounded-full
-                bg-red-700
-                text-white
-                flex
-                items-center
-                justify-center
-                font-bold
-              "
-            >
-              BG
-            </div>
-
-          </div>
-
-        </div>
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-end px-4 sm:px-6 lg:px-8">
+          {/* kosong / bisa dipakai tombol global nanti */}
+        </header>
 
         {/* PAGE CONTENT */}
-        <div className="h-[calc(100vh-90px)] overflow-y-auto">
+        <div className="flex-1 overflow-y-auto">
 
           {renderPage()}
 

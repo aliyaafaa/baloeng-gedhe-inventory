@@ -114,13 +114,70 @@ export default function POS() {
     { id: 5, name: "Polo Shirt Classic", price: 150000, category: "Apparel", stock: 30 },
     { id: 6, name: "Totebag Baloeng Gedhe", price: 75000, category: "Accessories", stock: 100 },
   ]);
-  const [cart, setCart] = useState<{ id: number; name: string; price: number; qty: number; canceled?: boolean }[]>([]);
+  const [cart, setCart] = useState<{
+    id: number | string;
+    name: string;
+    price: number;
+    qty: number;
+    canceled?: boolean;
+    subtotal?: number;
+    notes?: string;
+    type?: string;
+    isCustom?: boolean;
+  }[]>([]);
+  const [customOrder, setCustomOrder] = useState({
+    name: "Custom Order",
+    type: "PDH / PDL",
+    qty: "",
+    price: "",
+    notes: "",
+  });
+
+  const updateCustomOrder = (field: string, value: string) => {
+    const updated = {
+      ...customOrder,
+      [field]: value,
+    }
+
+    setCustomOrder(updated)
+
+    const qty = Number(updated.qty || 0)
+    const price = Number(updated.price || 0)
+
+    if (qty > 0 && price > 0) {
+      const customItem = {
+        id: "custom-order",
+        name: updated.name || "Custom Order",
+        type: updated.type,
+        qty,
+        price,
+        subtotal: qty * price,
+        notes: updated.notes,
+        isCustom: true,
+      }
+
+      setCart((prev) => {
+        const exists = prev.find((item) => item.id === "custom-order")
+
+        if (exists) {
+          return prev.map((item) =>
+            item.id === "custom-order" ? customItem : item
+          )
+        }
+
+        return [...prev, customItem]
+      })
+    }
+  };
+
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showNextStep, setShowNextStep] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
   const { createOrder } = useApp();
   const [showProductionTracking, setShowProductionTracking] = useState(false);
   const [showPaymentStatus, setShowPaymentStatus] = useState(false);
+  const closePaymentModal = () => setShowPaymentStatus(false);
+  const savePaymentStatus = () => setShowPaymentStatus(false);
   const [paymentStatus, setPaymentStatus] = useState("DP");
   const [paymentAmount, setPaymentAmount] = useState(50000000);
   const [orderStatus, setOrderStatus] = useState("OPEN");
@@ -280,19 +337,35 @@ export default function POS() {
     ));
   };
 
-  const updateQty = (id: number, delta: number) => {
+  const updateQty = (id: number | string, delta: number) => {
     setCart(
-      cart.map((item) =>
-        item.id === id ? { ...item, qty: Math.max(0, item.qty + delta) } : item
-      ).filter(item => item.qty > 0)
+      cart.map((item) => {
+        if (item.id === id) {
+          const newQty = Math.max(0, item.qty + delta);
+          if (id === "custom-order") {
+            setCustomOrder(prev => ({ ...prev, qty: newQty ? String(newQty) : "" }));
+          }
+          return { ...item, qty: newQty, subtotal: item.price * newQty };
+        }
+        return item;
+      }).filter(item => item.qty > 0)
     );
   };
 
-  const removeItem = (id: number) => {
+  const removeItem = (id: number | string) => {
+    if (id === "custom-order") {
+      setCustomOrder({
+        name: "Custom Order",
+        type: "PDH / PDL",
+        qty: "",
+        price: "",
+        notes: "",
+      });
+    }
     setCart(cart.filter((item) => item.id !== id));
   };
 
-  const cancelItem = (id: number) => {
+  const cancelItem = (id: number | string) => {
     setCart(
       cart.map((item) =>
         item.id === id ? { ...item, canceled: !item.canceled } : item
@@ -405,7 +478,7 @@ export default function POS() {
     }
   };
 
-  const total = cart.reduce((sum, item) => item.canceled ? sum : sum + item.price * item.qty, 0);
+  const total = cart.reduce((sum, item) => item.canceled ? sum : sum + Number(item.subtotal || item.price * item.qty || 0), 0);
   const remainingPayment = total - paymentAmount;
 
   const overallProgress = Math.round(
@@ -415,6 +488,12 @@ export default function POS() {
   const circleCircumference = 439;
   const progressOffset = circleCircumference - (overallProgress / 100) * circleCircumference;
   const totalPending = totalProduksi - totalSelesai - totalReject;
+
+  const filteredDrafts = draftOrders;
+  const recentDrafts = filteredDrafts
+    .slice()
+    .sort((a, b) => b.id - a.id)
+    .slice(0, 5);
 
   return (
     <div className="p-8 space-y-6">
@@ -428,7 +507,7 @@ export default function POS() {
           <h1 className="text-2xl font-bold text-slate-900 leading-tight">
             Point of Sale
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium italic">
+          <p className="text-sm text-slate-500 mt-1 font-medium not-italic">
             Kasir & Manajemen Transaksi Langsung
           </p>
         </div>
@@ -486,42 +565,26 @@ export default function POS() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-white rounded-2xl border border-white p-5 hover:shadow-lg transition cursor-pointer min-h-[220px] flex flex-col justify-between group"
+                className="relative bg-white rounded-3xl border border-gray-200 p-6 min-h-[220px] overflow-hidden"
               >
-                <div className="space-y-1" onClick={() => addToCart(p)}>
-              <div className="flex items-center justify-between mb-3 border-b border-gray-200 pb-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{p.category}</span>
-                    <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-red-700 group-hover:text-white transition-colors">
-                      <Plus className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <h3 className="font-bold text-slate-800 group-hover:text-red-700 transition-colors">{p.name}</h3>
-                  <p className="text-red-700 font-bold text-lg">
-                    Rp {p.price.toLocaleString("id-ID")}
-                  </p>
-                </div>
-                <div className="pt-4 flex items-center justify-between border-t border-gray-200 mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold flex items-center gap-1 ${p.stock < 10 ? 'text-orange-500 animate-pulse' : 'text-slate-400'}`}>
-                      <PackageCheck className="w-3 h-3" /> Stok: {p.stock}
-                    </span>
-                    <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleUpdateStock(p.id, -1); }}
-                        className="w-5 h-5 flex items-center justify-center bg-slate-100 border border-gray-200 rounded text-[10px] font-bold hover:bg-slate-200"
-                      >
-                        -
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleUpdateStock(p.id, 1); }}
-                        className="w-5 h-5 flex items-center justify-center bg-slate-100 border border-gray-200 rounded text-[10px] font-bold hover:bg-slate-200"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                  <button className="text-[10px] font-bold text-red-700 uppercase hover:underline">Variant</button>
-                </div>
+                <button
+                  onClick={() => addToCart(p)}
+                  className="absolute top-6 right-6 w-11 h-11 min-w-11 min-h-11 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 text-xl leading-none hover:bg-red-700 hover:text-white transition cursor-pointer"
+                >
+                  +
+                </button>
+
+                <p className="text-xs uppercase tracking-widest text-gray-400 font-bold pr-14">
+                  {p.category}
+                </p>
+
+                <h3 className="text-xl font-bold mt-8 pr-14 text-slate-800">
+                  {p.name}
+                </h3>
+
+                <p className="text-red-700 font-bold text-2xl mt-3">
+                  Rp {p.price.toLocaleString("id-ID")}
+                </p>
               </motion.div>
             ))}
           </div>
@@ -547,7 +610,7 @@ export default function POS() {
               </div>
             ) : (
               <div className="space-y-4">
-                {draftOrders.map((draft) => (
+                {recentDrafts.map((draft) => (
                   <div
                     key={draft.id}
                     className="border border-gray-200 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 hover:border-red-100 transition-colors"
@@ -663,12 +726,19 @@ export default function POS() {
                     </div>
 
                     {/* VARIANT */}
-                    <select className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-slate-600 focus:outline-none focus:ring-1 focus:ring-heritage-red/10">
-                      <option>Pilih Variant</option>
-                      <option>M - Merah Heritage</option>
-                      <option>L - Navy Blue</option>
-                      <option>XL - Jet Black</option>
-                    </select>
+                    {item.isCustom ? (
+                      <div className="bg-red-50 text-red-700 font-bold px-3 py-2 rounded-xl text-xs flex justify-between items-center">
+                        <span className="uppercase tracking-widest text-[9px] text-red-500 font-black">Custom Type</span>
+                        <span>{item.type}</span>
+                      </div>
+                    ) : (
+                      <select className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[10px] font-bold text-slate-600 focus:outline-none focus:ring-1 focus:ring-heritage-red/10">
+                        <option>Pilih Variant</option>
+                        <option>M - Merah Heritage</option>
+                        <option>L - Navy Blue</option>
+                        <option>XL - Jet Black</option>
+                      </select>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
@@ -677,13 +747,21 @@ export default function POS() {
                         <button disabled={item.canceled} onClick={() => updateQty(item.id, 1)} className="p-1 bg-red-700 text-white rounded-md transition-colors disabled:opacity-30"><Plus className="w-3 h-3" /></button>
                       </div>
                       <p className={`text-sm font-bold ${item.canceled ? "text-slate-400 line-through" : "text-heritage-red"}`}>
-                        Rp {(item.price * item.qty).toLocaleString("id-ID")}
+                        Rp {(item.subtotal || item.price * item.qty).toLocaleString("id-ID")}
                       </p>
                     </div>
 
                     {/* CUSTOM NOTES */}
                     <textarea
                       placeholder="Catatan customer (bordir, nama, ukuran khusus, dll)"
+                      value={item.notes || ""}
+                      onChange={(e) => {
+                        if (item.isCustom) {
+                          updateCustomOrder("notes", e.target.value);
+                        } else {
+                          // Allow standard item state update if wanted, otherwise let standard behave
+                        }
+                      }}
                       className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-heritage-red/10 resize-none font-medium h-16"
                     />
 
@@ -731,7 +809,7 @@ export default function POS() {
                       qty: cart.reduce((acc, item) => acc + item.qty, 0),
                       total: total,
                       status: "On Production",
-                      createdAt: new Date(),
+                      createdAt: new Date().toISOString().split("T")[0],
                     };
                     createOrder(newOrder);
                     setShowNextStep(true);
@@ -767,11 +845,11 @@ export default function POS() {
 
       {/* CUSTOM MODAL */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-gray-200"
+            className="w-full max-w-[520px] max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-y-auto border border-gray-100 flex flex-col"
           >
             <div className="p-8 border-b border-gray-200">
                <h2 className="text-2xl font-bold text-slate-800">Custom Manufacturing</h2>
@@ -782,7 +860,11 @@ export default function POS() {
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jenis Produk</label>
-                        <select className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none">
+                        <select
+                          value={customOrder.type}
+                          onChange={(e) => updateCustomOrder("type", e.target.value)}
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                        >
                            <option>PDH / PDL</option>
                            <option>Kaos Polo</option>
                            <option>Jaket Bomber</option>
@@ -790,21 +872,33 @@ export default function POS() {
                      </div>
                      <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Qty</label>
-                        <input type="number" placeholder="Min. 24" className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none" />
+                        <input
+                          type="number"
+                          value={customOrder.qty}
+                          onChange={(e) => updateCustomOrder("qty", e.target.value)}
+                          placeholder="Min. 24"
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                        />
                      </div>
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga per Pcs (Rp)</label>
                       <input 
                         type="number" 
-                        value={customPrice} 
-                        onChange={(e) => setCustomPrice(Number(e.target.value))}
+                        value={customOrder.price} 
+                        onChange={(e) => updateCustomOrder("price", e.target.value)}
+                        placeholder="70000"
                         className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none font-bold text-red-700" 
                       />
                   </div>
                   <div className="space-y-1.5">
                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Catatan Spesifikasi</label>
-                     <textarea placeholder="Bahan, warna, bordir logo..." className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none" />
+                     <textarea
+                       value={customOrder.notes}
+                       onChange={(e) => updateCustomOrder("notes", e.target.value)}
+                       placeholder="Bahan, warna, bordir logo..."
+                       className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none"
+                     />
                   </div>
                </div>
                <div className="flex gap-3 pt-4">
@@ -816,7 +910,11 @@ export default function POS() {
                   </button>
                   <button 
                     onClick={() => {
-                      addToCart({ id: Date.now(), name: "Custom Order", price: customPrice });
+                      if (!customOrder.qty || !customOrder.price) {
+                        alert("Harap isi Quantity dan Harga Terlebih Dahulu!");
+                        return;
+                      }
+                      updateCustomOrder("qty", customOrder.qty);
                       setShowCustomModal(false);
                     }}
                     className="flex-1 py-4 bg-red-700 text-white font-bold uppercase tracking-widest text-xs rounded-full shadow-lg shadow-red-100 hover:bg-red-800 transition active:scale-95"
@@ -1463,27 +1561,31 @@ export default function POS() {
       )}
       {/* ================= UPDATE PAYMENT STATUS ================= */}
       {showPaymentStatus && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-6">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-200"
+            className="w-full sm:max-w-[520px] bg-white rounded-t-[28px] sm:rounded-[28px] shadow-2xl max-h-[92dvh] flex flex-col overflow-hidden"
           >
             {/* HEADER */}
-            <div className="border-b border-gray-200 p-8 bg-slate-50/20">
-              <h2 className="text-2xl font-black text-slate-800 tracking-tighter">Update Status Pembayaran</h2>
-              <p className="text-slate-500 font-medium mt-1">Kelola status pembayaran customer heritage</p>
+            <div className="px-5 sm:px-7 py-5 border-b border-gray-200 shrink-0">
+              <h2 className="text-xl sm:text-2xl font-bold">
+                Update Status Pembayaran
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Kelola status pembayaran customer heritage
+              </p>
             </div>
 
-            {/* CONTENT */}
-            <div className="p-8 space-y-6">
+            {/* BODY SCROLL */}
+            <div className="px-5 sm:px-7 py-5 overflow-y-auto flex-1 space-y-5">
               {/* STATUS */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pembayaran</label>
                 <select
                   value={paymentStatus}
                   onChange={(e) => setPaymentStatus(e.target.value)}
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-red-100 transition-all appearance-none"
+                  className="w-full min-h-[46px] rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-red-700"
                 >
                   <option value="DP">DP</option>
                   <option value="Cicilan">Cicilan</option>
@@ -1500,12 +1602,12 @@ export default function POS() {
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(Number(e.target.value))}
                   placeholder="Masukkan nominal"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-red-100 transition-all"
+                  className="w-full min-h-[46px] rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-red-700"
                 />
               </div>
 
               {/* PAYMENT SUMMARY */}
-                      <div className="space-y-3 text-sm pt-4 border-t border-gray-200">
+              <div className="space-y-3 text-sm pt-4 border-t border-gray-200">
                 <div className="flex justify-between">
                   <span className="text-slate-500 font-medium">Status Pembayaran</span>
                   <span className="font-bold text-red-700">{paymentStatus}</span>
@@ -1523,7 +1625,7 @@ export default function POS() {
               {/* METODE */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Metode Pembayaran</label>
-                <select className="w-full bg-slate-50 border border-gray-200 rounded-2xl p-4 text-sm font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-red-100 transition-all appearance-none">
+                <select className="w-full min-h-[46px] rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-red-700">
                   <option>Transfer Bank</option>
                   <option>Cash</option>
                   <option>QRIS</option>
@@ -1536,7 +1638,7 @@ export default function POS() {
                 <textarea
                   rows={3}
                   placeholder="Catatan tambahan pembayaran..."
-                  className="w-full bg-slate-50 border border-gray-200 rounded-2xl p-4 text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-100 transition-all resize-none"
+                  className="w-full min-h-[90px] rounded-2xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-red-700 resize-none"
                 />
               </div>
 
@@ -1552,19 +1654,22 @@ export default function POS() {
             </div>
 
             {/* FOOTER */}
-            <div className="border-t border-gray-200 p-8 flex justify-end gap-3 bg-slate-50/10">
-              <button
-                onClick={() => setShowPaymentStatus(false)}
-                className="px-8 py-4 rounded-2xl border border-gray-200 text-slate-500 font-bold uppercase tracking-widest text-[10px] hover:bg-white transition"
-              >
-                Batal
-              </button>
-              <button
-                onClick={() => setShowPaymentStatus(false)}
-                className="px-8 py-4 rounded-2xl bg-red-700 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg shadow-red-100 hover:bg-red-800 transition"
-              >
-                Simpan Status
-              </button>
+            <div className="px-5 sm:px-7 py-4 border-t border-gray-200 bg-white shrink-0">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={closePaymentModal}
+                  className="py-3 rounded-2xl border border-gray-200 font-bold text-gray-500 hover:bg-slate-50 transition"
+                >
+                  Batal
+                </button>
+
+                <button
+                  onClick={savePaymentStatus}
+                  className="py-3 rounded-2xl bg-red-700 text-white font-bold hover:bg-red-800 transition shadow-lg shadow-red-100"
+                >
+                  Simpan Status
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

@@ -23,6 +23,7 @@ export default function FinancePage() {
     orders,
     expenseRecords,
     updateExpenseRecord,
+    settings,
   } = useApp()
 
   const [yearFilter, setYearFilter] = useState("2026")
@@ -82,12 +83,12 @@ export default function FinancePage() {
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
 
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tight">
+          <h1 className="page-title">
             Laporan Keuangan
           </h1>
 
-          <p className="text-gray-500 mt-2 text-md">
-            Ringkasan pemasukan, pengeluaran, dan laba usaha Baloeng Gedhe
+          <p className="page-subtitle">
+            Ringkasan pemasukan, pengeluaran, dan laba usaha {settings.business.name}
           </p>
         </div>
 

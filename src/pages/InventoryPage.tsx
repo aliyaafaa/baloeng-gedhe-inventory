@@ -3,13 +3,13 @@ import { useApp, MaterialDraftItem } from "../context/AppContext"
 
 export default function InventoryPage() {
   const {
-    materialOptions,
     materialDrafts,
     updateMaterialItem,
     saveMaterialUsageToStock,
     warehouseStock,
     addMaterialExpense,
     addOtherMaterialItem,
+    settings,
   } = useApp()
 
   const [searchDraft, setSearchDraft] = useState("")
@@ -42,12 +42,12 @@ export default function InventoryPage() {
 
       <div className="mb-8">
 
-        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A]">
+        <h1 className="page-title">
           Inventaris Stok
         </h1>
 
-        <p className="text-gray-500 mt-2 text-lg">
-          Draf pembelanjaan material otomatis dari order customer
+        <p className="page-subtitle">
+          Kelola kebutuhan material dan sisa stok gudang
         </p>
 
       </div>
@@ -273,7 +273,7 @@ export default function InventoryPage() {
                                   Pilih material
                                 </option>
 
-                                {materialOptions.map((material) => (
+                                {settings.material.fabrics.map((material) => (
                                   <option key={material} value={material}>
                                     {material}
                                   </option>

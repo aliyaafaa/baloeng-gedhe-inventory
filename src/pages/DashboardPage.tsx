@@ -7,6 +7,7 @@ export default function DashboardPage() {
     warehouseStock,
     expenseRecords,
     productionList,
+    settings,
   } = useApp()
 
   const totalIncome = orders.reduce(
@@ -35,10 +36,10 @@ export default function DashboardPage() {
 
       {/* HEADER */}
       <div className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-bold text-[#0F172A]">
-          Dashboard Baloeng Gedhe
+        <h1 className="page-title">
+          Dashboard {settings.business.name}
         </h1>
-        <p className="text-gray-500 mt-2 not-italic">
+        <p className="page-subtitle">
           Ringkasan operasional dan keuangan hari ini
         </p>
       </div>

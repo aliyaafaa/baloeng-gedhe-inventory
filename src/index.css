@@ -45,3 +45,27 @@ h1, h2, h3, h4, h5, h6 {
   background:#d1d5db;
   border-radius:999px;
 }
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideIn {
+  animation: slideIn 0.25s ease-out;
+}
+
+.page-title {
+  @apply text-3xl sm:text-4xl lg:text-5xl font-bold tracking-wide text-slate-950;
+}
+
+.page-subtitle {
+  @apply text-sm sm:text-base lg:text-lg text-slate-500 mt-2;
+}
+

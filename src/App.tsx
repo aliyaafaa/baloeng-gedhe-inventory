@@ -1,10 +1,16 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 import DashboardPage from "./pages/DashboardPage"
 import POSPage from "./pages/POSPage"
 import InventoryPage from "./pages/InventoryPage"
 import FinancePage from "./pages/FinancePage"
 import TrackingPage from "./pages/TrackingPage"
+import NotificationPage from "./pages/NotificationPage"
+import SettingsPage from "./pages/SettingsPage"
+import NotificationPopup from "./components/NotificationPopup"
+
+import { useApp } from "./context/AppContext"
+import { generateNotifications, AppNotification } from "./utils/notificationUtils"
 
 import {
   LayoutDashboard,
@@ -13,12 +19,40 @@ import {
   Wallet,
   Eye,
   Bell,
+  Settings,
 } from "lucide-react"
 
 export default function App() {
 
   const [activePage, setActivePage] =
     useState("dashboard")
+
+  const { orders, settings, setSettings } = useApp()
+  const [popupNotif, setPopupNotif] = useState<AppNotification | null>(null)
+  const [lastOrdersLength, setLastOrdersLength] = useState(orders.length)
+  const notifications = generateNotifications(orders)
+
+  useEffect(() => {
+    const freshNotifications = generateNotifications(orders)
+
+    if (freshNotifications.length > 0) {
+      // Only trigger popup for genuinely new orders or status updates, avoiding initial load spam
+      if (orders.length > lastOrdersLength) {
+        setPopupNotif(freshNotifications[freshNotifications.length - 1])
+      } else if (lastOrdersLength === 0) {
+        // Fallback for first initialization if needed
+        setPopupNotif(freshNotifications[freshNotifications.length - 1])
+      }
+
+      setLastOrdersLength(orders.length)
+
+      const timer = setTimeout(() => {
+        setPopupNotif(null)
+      }, 5000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [orders, lastOrdersLength])
 
   const menus = [
     {
@@ -50,6 +84,12 @@ export default function App() {
       label: "Pantau Produksi",
       icon: Eye,
     },
+
+    {
+      id: "settings",
+      label: "Pengaturan",
+      icon: Settings,
+    },
   ]
 
   const renderPage = () => {
@@ -70,6 +110,12 @@ export default function App() {
 
       case "tracking":
         return <TrackingPage />
+
+      case "notifikasi":
+        return <NotificationPage orders={orders} />
+
+      case "settings":
+        return <SettingsPage settings={settings} setSettings={setSettings} />
 
       default:
         return <DashboardPage />
@@ -97,12 +143,12 @@ export default function App() {
         {/* LOGO */}
         <div>
 
-          <h1 className="text-4xl font-bold">
-            Baloeng Gedhe
+          <h1 className="text-4xl font-bold leading-tight">
+            {settings.business.name}
           </h1>
 
           <p className="text-gray-400 mt-2 font-semibold">
-            by 2 BD03C TUP
+            {settings.business.subtitle}
           </p>
 
         </div>
@@ -112,16 +158,32 @@ export default function App() {
 
           {/* NOTIFIKASI */}
           <button
-            onClick={() => alert("Tidak ada notifikasi baru untuk saat ini.")}
-            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-gray-600 hover:bg-red-50 hover:text-red-700 transition text-left"
+            onClick={() => setActivePage("notifikasi")}
+            id="sidebar-notification-btn"
+            className={`
+              w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition text-left
+              ${
+                activePage === "notifikasi"
+                  ? "bg-red-50 text-red-700 font-bold"
+                  : "text-gray-600 hover:bg-red-50 hover:text-red-700 font-medium"
+              }
+            `}
           >
-            <span className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center text-red-700">
+            <span className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              activePage === "notifikasi" ? "bg-red-100 text-red-900" : "bg-gray-100 text-red-700"
+            }`}>
               <Bell size={20} />
             </span>
 
-            <span className="font-semibold">
+            <span className="font-semibold flex-1">
               Notifikasi
             </span>
+
+            {notifications.length > 0 && (
+              <span id="unread-notifications-badge" className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                {notifications.length}
+              </span>
+            )}
           </button>
 
           {menus.map((menu) => {
@@ -167,51 +229,7 @@ export default function App() {
 
         </div>
 
-        {/* FOOTER */}
-        <div className="mt-auto">
 
-          <div
-            className="
-              bg-gray-50
-              rounded-2xl
-              p-4
-              flex
-              items-center
-              gap-4
-            "
-          >
-
-            <div
-              className="
-                w-12
-                h-12
-                rounded-full
-                bg-red-700
-                text-white
-                flex
-                items-center
-                justify-center
-                font-bold
-              "
-            >
-              BG
-            </div>
-
-            <div>
-
-              <h3 className="font-semibold">
-                Admin Baloeng
-              </h3>
-
-              <p className="text-sm text-gray-500">
-                Production Manager
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
 
       </aside>
 
@@ -231,6 +249,11 @@ export default function App() {
         </div>
 
       </main>
+
+      <NotificationPopup
+        notification={popupNotif}
+        onClose={() => setPopupNotif(null)}
+      />
 
     </div>
   )

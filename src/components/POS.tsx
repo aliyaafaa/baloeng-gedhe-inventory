@@ -173,12 +173,16 @@ export default function POS() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showNextStep, setShowNextStep] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
-  const { createOrder } = useApp();
+  const { createOrder, settings } = useApp();
+  const invoiceNumber = `${settings.invoice.prefix}-2026-${String(
+    settings.invoice.startNumber
+  ).padStart(4, "0")}`;
+
   const [showProductionTracking, setShowProductionTracking] = useState(false);
   const [showPaymentStatus, setShowPaymentStatus] = useState(false);
   const closePaymentModal = () => setShowPaymentStatus(false);
   const savePaymentStatus = () => setShowPaymentStatus(false);
-  const [paymentStatus, setPaymentStatus] = useState("DP");
+  const [paymentStatus, setPaymentStatus] = useState(settings.invoice.paymentDefault);
   const [paymentAmount, setPaymentAmount] = useState(50000000);
   const [orderStatus, setOrderStatus] = useState("OPEN");
   const [draftOrders, setDraftOrders] = useState<any[]>([]);
@@ -191,67 +195,19 @@ export default function POS() {
   const [companyName, setCompanyName] = useState("");
   const [showUpdateProduksi, setShowUpdateProduksi] = useState(false);
   const [showSuratKerja, setShowSuratKerja] = useState(false);
-  const [selectedWorkflow, setSelectedWorkflow] = useState("Bordir Logo");
+  const [selectedWorkflow, setSelectedWorkflow] = useState(settings.production.workflow[0] || "Bordir Logo");
   const [workflowStatus, setWorkflowStatus] = useState("progress");
   const [productionProgress, setProductionProgress] = useState(64);
-  const [workflowData, setWorkflowData] = useState([
-    {
-      step: "1",
-      title: "Invoice & Surat Kerja",
-      desc: "Invoice dan surat kerja berhasil dibuat",
-      status: "done",
-      progress: 100,
+  const [workflowData, setWorkflowData] = useState<any[]>(
+    settings.production.workflow.map((step, index) => ({
+      step: String(index + 1),
+      title: step,
+      desc: index === 0 ? `${step} berhasil dibuat/disiapkan.` : `Menunggu proses sebelumnya`,
+      status: index === 0 ? "done" : settings.production.defaultStatus.toLowerCase() as any,
+      progress: index === 0 ? 100 : 0,
       image: null as string | null,
-    },
-    {
-      step: "2",
-      title: "Pengadaan Kain",
-      desc: "Material produksi telah diterima",
-      status: "done",
-      progress: 100,
-      image: null as string | null,
-    },
-    {
-      step: "3",
-      title: "Potong Kain",
-      desc: "500 pola berhasil dipotong",
-      status: "done",
-      progress: 100,
-      image: null as string | null,
-    },
-    {
-      step: "4",
-      title: "Bordir Logo",
-      desc: "320 pcs selesai bordir logo",
-      status: "progress",
-      progress: 64,
-      image: null as string | null,
-    },
-    {
-      step: "5",
-      title: "Jahit Produksi",
-      desc: "Menunggu proses bordir selesai",
-      status: "pending",
-      progress: 0,
-      image: null as string | null,
-    },
-    {
-      step: "6",
-      title: "Quality Control",
-      desc: "QC final produksi",
-      status: "pending",
-      progress: 0,
-      image: null as string | null,
-    },
-    {
-      step: "7",
-      title: "Packing & Delivery",
-      desc: "Pengiriman ke customer",
-      status: "pending",
-      progress: 0,
-      image: null as string | null,
-    },
-  ]);
+    }))
+  );
   const [uploadedPhoto, setUploadedPhoto] = useState<string | null>(null);
   const [completedQty, setCompletedQty] = useState(320);
   const [totalProduksi, setTotalProduksi] = useState(500);
@@ -504,11 +460,11 @@ export default function POS() {
         className="flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+          <h1 className="page-title">
             Point of Sale
           </h1>
-          <p className="text-sm text-slate-500 mt-1 font-medium not-italic">
-            Kasir & Manajemen Transaksi Langsung
+          <p className="page-subtitle">
+            Kelola order dan transaksi customer
           </p>
         </div>
 
@@ -1030,7 +986,7 @@ export default function POS() {
                       Invoice
                     </p>
                     <h3 className="font-bold text-lg mt-3">
-                      INV-2026-0012
+                      {invoiceNumber}
                     </h3>
                   </div>
                   <div className="bg-gray-50 rounded-2xl p-5">
@@ -1414,7 +1370,7 @@ export default function POS() {
                 <p className="text-slate-500 font-medium mt-1">Manufacturing Custom Order Heritage</p>
               </div>
               <div className="text-right">
-                <h2 className="font-black text-red-700 text-2xl tracking-tighter">INV-2026-0012</h2>
+                <h2 className="font-black text-red-700 text-2xl tracking-tighter">{invoiceNumber}</h2>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">09 Mei 2026</p>
               </div>
             </div>
@@ -1424,13 +1380,12 @@ export default function POS() {
               <div className="flex flex-col md:flex-row md:justify-between gap-8 border-b border-gray-200 pb-10">
                 <div className="space-y-4">
                   <div>
-                    <h2 className="font-black text-2xl text-slate-800 tracking-tight">Baloeng Gedhe</h2>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">Manufacturing & Custom Apparel</p>
+                    <h2 className="font-black text-2xl text-slate-800 tracking-tight">{settings.business.name}</h2>
+                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">MANUFACTURING & CUSTOM APPAREL</p>
                   </div>
                   <div className="text-sm text-slate-500 font-medium leading-relaxed">
-                    Jl. Heritage No. 45<br />
-                    Purwokerto Timur, Indonesia<br />
-                    hello@baloenggedhe.com
+                    <p>{settings.business.address}</p>
+                    <p>{settings.business.email}</p>
                   </div>
                 </div>
                 <div className="md:text-right space-y-4">

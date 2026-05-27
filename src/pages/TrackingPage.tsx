@@ -14,7 +14,7 @@ import { useApp } from "../context/AppContext"
 
 export default function TrackingPage() {
 
-  const { materialDrafts, orders } = useApp()
+  const { materialDrafts, orders, settings } = useApp()
 
   const [searchOrder, setSearchOrder] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
@@ -336,14 +336,25 @@ export default function TrackingPage() {
         deadline: activeOrder.deadline || "TBA",
         progress: activeOrder.progress || 10,
         status: activeOrder.status || "Sedang Produksi",
-        steps: [
-          { id: 1, title: "Pengadaan Kain", desc: "Kain drill dan bahan pelengkap tersedia.", status: "progress", progress: 10, icon: Package },
-          { id: 2, title: "Potong Kain", desc: "Pola jahitan sedang disiapkan.", status: "pending", progress: 0, icon: Scissors },
-          { id: 3, title: "Bordir Logo", desc: "Logo dada dan lengan selesai.", status: "pending", progress: 0, icon: Shirt },
-          { id: 4, title: "Jahit Produksi", desc: "Proses jahit massal.", status: "pending", progress: 0, icon: Pencil },
-          { id: 5, title: "Quality Control", desc: "Pengecekan akhir kualitas jahitan.", status: "pending", progress: 0, icon: Search },
-          { id: 6, title: "Packing & Delivery", desc: "Pengemasan aman dan pengiriman ke alamat tujuan.", status: "pending", progress: 0, icon: Truck }
-        ]
+        steps: settings.production.workflow.map((step, index) => {
+          let IconComp = Package;
+          const lower = step.toLowerCase();
+          if (lower.includes("kain") || lower.includes("bahan")) IconComp = Package;
+          else if (lower.includes("potong")) IconComp = Scissors;
+          else if (lower.includes("bordir") || lower.includes("sablon")) IconComp = Shirt;
+          else if (lower.includes("jahit")) IconComp = Pencil;
+          else if (lower.includes("control") || lower.includes("qc")) IconComp = Search;
+          else if (lower.includes("packing") || lower.includes("delivery") || lower.includes("kirim")) IconComp = Truck;
+
+          return {
+            id: index + 1,
+            title: step,
+            desc: index === 0 ? `${step} sedang disiapkan.` : `Menunggu tahap sebelumnya selesai.`,
+            status: index === 0 ? "progress" : settings.production.defaultStatus.toLowerCase(),
+            progress: index === 0 ? 10 : 0,
+            icon: IconComp
+          };
+        })
       };
     }
     return found;
@@ -593,11 +604,11 @@ export default function TrackingPage() {
 
         <div>
 
-          <h1 className="text-5xl font-bold text-[#0F172A]">
+          <h1 className="page-title">
             Pantau Produksi
           </h1>
 
-          <p className="text-gray-500 mt-3 text-lg">
+          <p className="page-subtitle">
             Monitoring realtime produksi garment
           </p>
 

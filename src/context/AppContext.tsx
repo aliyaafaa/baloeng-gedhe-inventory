@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import defaultSettings from "../data/defaultSettings";
 
 export interface Order {
   id: number;
@@ -97,6 +98,8 @@ interface AppContextType {
   }) => void;
   updateExpenseRecord: (id: number, field: keyof ExpenseRecord, value: any) => void;
   addOtherMaterialItem: (draftId: number) => void;
+  settings: typeof defaultSettings;
+  setSettings: React.Dispatch<React.SetStateAction<typeof defaultSettings>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -132,6 +135,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     { name: "Cotton Combed", qty: 80 },
     { name: "Denim", qty: 45 },
   ]);
+
+  /* ================= SETTINGS ================= */
+  const [settings, setSettings] = useState<typeof defaultSettings>(defaultSettings);
 
   /* ================= PENYALURAN MATERIAL ================= */
   const [materialDrafts, setMaterialDrafts] = useState<MaterialDraft[]>([]);
@@ -373,6 +379,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addMaterialExpense,
         updateExpenseRecord,
         addOtherMaterialItem,
+        settings,
+        setSettings,
       }}
     >
       {children}

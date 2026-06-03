@@ -174,80 +174,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Supabase orders load error:", ordersErr);
       }
 
-      // 2. Fetch Production Batches (Pantau Produksi)
-      const { data: batchesData, error: batchesErr } = await supabase
-        .from("production_batches")
-        .select("*")
-        .order("id", { ascending: false });
+      // 2. Map Production Batches from Orders (Pantau Produksi)
+      // Since orders is the single source of truth, we populate productionList right from parsedOrders
+      setProductionList(parsedOrders);
 
-      if (!batchesErr && batchesData && batchesData.length > 0) {
-        const parsedBatches: Order[] = batchesData.map((item: any) => ({
-          id: item.id,
-          customer: item.customer_name || item.customer || "-",
-          product: item.product_name || item.product || "-",
-          qty: Number(item.qty || item.quantity || 1),
-          total: Number(item.total_amount || item.total || 0),
-          status: item.production_status || item.status || "On Production",
-          progress: Number(item.progress || 10),
-          deadline: item.deadline || "",
-          createdAt: item.created_at || item.createdAt || new Date().toISOString(),
-        }));
-        setProductionList(parsedBatches);
-      } else {
-        // Fallback to active orders if production_batches is empty or doesn't exist
-        const activeFromOrders = parsedOrders.filter(o => o.status !== "Draft");
-        setProductionList(activeFromOrders);
-      }
+      // 3. Clear/empty inventory materials state as per instructions (not using inventory_materials table)
+      setWarehouseStock([]);
 
-      // 3. Fetch Inventory Materials
-      const { data: inventoryData, error: inventoryErr } = await supabase
-        .from("inventory_materials")
-        .select("*")
-        .order("id", { ascending: false });
+      // 4. Clear/empty financial transactions state as per instructions (not using financial_transactions table)
+      setExpenseRecords([]);
 
-      if (!inventoryErr && inventoryData) {
-        const parsedStock = inventoryData.map((item: any) => ({
-          id: item.id,
-          materialName: item.material_name || item.materialName || "-",
-          category: item.category || "-",
-          stockLeft: Number(item.stock_left || item.stockLeft || 0),
-          unit: item.unit || "pcs",
-          sourceOrder: item.source_order || item.sourceOrder || "-"
-        }));
-        setWarehouseStock(parsedStock);
-      }
-
-      // 4. Fetch Financial Transactions (Laporan Keuangan)
-      const { data: financeRecords, error: financeErr } = await supabase
-        .from("financial_transactions")
-        .select("*")
-        .order("id", { ascending: false });
-
-      let parsedExpenses: ExpenseRecord[] = [];
-      if (!financeErr && financeRecords) {
-        parsedExpenses = financeRecords.map((item: any) => ({
-          id: item.id,
-          date: item.date || item.transaction_date || new Date().toISOString().split('T')[0],
-          category: item.category || "-",
-          materialName: item.material_name || item.materialName || "-",
-          materialDetail: item.material_detail || item.materialDetail || "-",
-          qty: Number(item.qty || item.quantity || 0),
-          unit: item.unit || "pcs",
-          price: Number(item.price || 0),
-          total: Number(item.total || item.total_amount || 0),
-          sourceOrder: item.source_order || item.sourceOrder || "-",
-          customer: item.customer || "-"
-        }));
-        setExpenseRecords(parsedExpenses);
-      }
-
-      // 5. Compute Finances dynamically based on Supabase tables
+      // 5. Compute Finances dynamically based solely on orders
       const computedIncome = parsedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
-      const computedExpense = parsedExpenses.reduce((sum, item) => sum + Number(item.total || 0), 0);
       setFinanceData({
         income: computedIncome,
-        expense: computedExpense,
-        profit: computedIncome - computedExpense
+        expense: 0,
+        profit: computedIncome
       });
 
     } catch (err) {

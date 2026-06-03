@@ -173,9 +173,9 @@ export default function POS() {
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showNextStep, setShowNextStep] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
-  const { createOrder, settings } = useApp();
-  const invoiceNumber = `${settings.invoice.prefix}-2026-${String(
-    settings.invoice.startNumber
+  const { createOrder, settings, orders } = useApp();
+  const invoiceNumber = `INV-${new Date().getFullYear()}-${String(
+    orders.length + 1
   ).padStart(4, "0")}`;
 
   const [showProductionTracking, setShowProductionTracking] = useState(false);
@@ -761,11 +761,13 @@ export default function POS() {
                     const newOrder = {
                       id: Date.now(),
                       customer: customerName || "Guest",
+                      customer_company: companyName || "-",
                       product: cart.length > 1 ? `${cart[0].name} +${cart.length - 1}` : cart[0]?.name || "Custom Order",
                       qty: cart.reduce((acc, item) => acc + item.qty, 0),
                       total: total,
                       status: "On Production",
                       createdAt: new Date().toISOString().split("T")[0],
+                      invoice_no: invoiceNumber,
                     };
                     createOrder(newOrder);
                     setShowNextStep(true);

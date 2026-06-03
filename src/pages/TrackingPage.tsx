@@ -196,6 +196,9 @@ export default function TrackingPage() {
   const [showBatchEdit, setShowBatchEdit] =
     useState(false)
 
+  const [showInvoiceModal, setShowInvoiceModal] =
+    useState(false)
+
   const [batchForm, setBatchForm] =
     useState({
       customer: "",
@@ -576,6 +579,22 @@ export default function TrackingPage() {
 
               {selectedData && (
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowInvoiceModal(true)}
+                    className="
+                      px-5
+                      py-3
+                      rounded-2xl
+                      bg-red-100
+                      text-red-700
+                      font-semibold
+                      hover:bg-red-200
+                      transition-colors
+                    "
+                  >
+                    Lihat Invoice
+                  </button>
+
                   <button
                     onClick={openBatchEdit}
                     className="
@@ -1041,6 +1060,153 @@ export default function TrackingPage() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showInvoiceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowInvoiceModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-[32px] shadow-2xl overflow-hidden border border-slate-100"
+            >
+              {(() => {
+                const order = activeOrder;
+                return (
+                  <div className="p-8">
+                    <div className="flex justify-between items-center mb-8 border-b border-slate-100 pb-5">
+                      <div>
+                        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Invoice Detail</h2>
+                        <p className="text-slate-500 font-medium text-xs mt-1">Sistem Dokumen Invoice Heritage</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowInvoiceModal(false)}
+                        className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                      >
+                        <X size={24} className="text-slate-400" />
+                      </button>
+                    </div>
+
+                    <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 space-y-6 flex flex-col">
+                      <div className="flex justify-between items-start gap-4">
+                        <div>
+                          <h1 className="text-xl font-black text-slate-800 tracking-tighter">
+                            {selectedOrder?.invoice_no ||
+                              order?.invoice_no ||
+                              '-'}
+                          </h1>
+
+                          <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
+                            {(selectedOrder?.created_at || order?.created_at)
+                              ? new Date(
+                                  selectedOrder?.created_at ||
+                                  order?.created_at
+                                ).toLocaleDateString('id-ID', {
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric'
+                                }).toUpperCase()
+                              : '-'}
+                          </p>
+                        </div>
+                        
+                        <div className="text-right">
+                          <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider">Verified Invoice</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-6">
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Perusahaan / Pembeli</label>
+                          <h2 className="text-base font-black text-slate-800 tracking-tight">
+                            {selectedOrder?.customer_company ||
+                              selectedOrder?.customer_name ||
+                              '-'}
+                          </h2>
+                          <p className="text-xs font-semibold text-slate-500 mt-1">
+                            {selectedOrder?.customer_name || '-'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Batas Waktu Produksi</label>
+                          <p className="text-sm font-bold text-red-700">
+                            {selectedOrder?.deadline
+                              ? new Date(selectedOrder.deadline)
+                                  .toLocaleDateString('id-ID', {
+                                    day: 'numeric',
+                                    month: 'long',
+                                    year: 'numeric'
+                                  })
+                              : '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-100">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Detail Pesanan</label>
+                        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+                          <table className="w-full text-left text-xs border-collapse">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-100">
+                                <th className="p-4 font-black text-slate-400 uppercase tracking-widest">Produk / Item</th>
+                                <th className="p-4 font-black text-slate-400 uppercase tracking-widest text-center">Jumlah</th>
+                                <th className="p-4 font-black text-slate-400 uppercase tracking-widest text-right">Harga Satuan</th>
+                                <th className="p-4 font-black text-slate-400 uppercase tracking-widest text-right">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="text-slate-700 font-bold">
+                                <td className="p-4">
+                                  {selectedOrder?.product_name || selectedOrder?.product || '-'}
+                                </td>
+                                <td className="p-4 text-center">
+                                  {selectedOrder?.qty || 0} Pcs
+                                </td>
+                                <td className="p-4 text-right">
+                                  Rp {Number(
+                                    selectedOrder?.unit_price || 0
+                                  ).toLocaleString('id-ID')}
+                                </td>
+                                <td className="p-4 text-right text-red-700 text-sm font-black">
+                                  Rp {Number(
+                                    (selectedOrder?.qty || 0) * (selectedOrder?.unit_price || 0) || selectedOrder?.total || 0
+                                  ).toLocaleString('id-ID')}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 flex gap-4 no-print">
+                      <button 
+                        onClick={() => setShowInvoiceModal(false)}
+                        className="flex-1 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest"
+                      >
+                        Tutup
+                      </button>
+                      <button 
+                        onClick={() => window.print()}
+                        className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg shadow-slate-100 hover:bg-black transition-all transform hover:translate-y-[-2px] active:translate-y-0 text-xs uppercase tracking-widest"
+                      >
+                        Print Invoice
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </motion.div>
           </div>
         )}

@@ -16,9 +16,12 @@ export interface Order {
   // Supabase properties for backward/forward compatibility
   invoice_no?: string;
   customer_name?: string;
+  customer_company?: string;
   product_name?: string;
   quantity?: number;
   total_amount?: number;
+  unit_price?: number;
+  created_at?: string;
 }
 
 export interface FinanceData {
@@ -159,6 +162,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
           progress: item.progress || 10,
           deadline: item.deadline || "",
           createdAt: item.created_at || new Date().toISOString(),
+          created_at: item.created_at,
+          invoice_no: item.invoice_no,
+          customer_name: item.customer_name,
+          customer_company: item.customer_company,
+          product_name: item.product_name,
+          unit_price: Number(item.unit_price || 0),
         }));
         setOrders(parsedOrders);
       } else if (ordersErr) {
@@ -456,7 +465,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ================= CREATE ORDER ================= */
   const createOrder = async (order: Omit<Order, 'progress'>) => {
-    const fullOrder = { ...order, progress: 10 }; // Initial progress 10%
+    const invoiceNumber = order.invoice_no || `INV-${new Date().getFullYear()}-${String(
+      orders.length + 1
+    ).padStart(4, '0')}`;
+    const fullOrder = { ...order, progress: 10, invoice_no: invoiceNumber }; // Initial progress 10%
 
     /* SAVE ORDER */
     setOrders((prev) => [...prev, fullOrder]);
@@ -489,9 +501,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .from("orders")
           .insert([
             {
-              invoice_no: `INV-${Date.now()}`,
+              invoice_no: invoiceNumber,
               customer_name: order.customer,
-              customer_company: "-",
+              customer_company: order.customer_company || "-",
               product_name: order.product,
               qty: order.qty,
               unit_price: order.qty > 0 ? order.total / order.qty : order.total,

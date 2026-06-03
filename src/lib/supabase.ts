@@ -10,6 +10,10 @@ export const isSupabaseConfigured = (): boolean => {
   return true
 }
 
+console.log("URL:", supabaseUrl)
+console.log("KEY:", supabaseAnonKey)
+console.log("CONFIGURED:", isSupabaseConfigured())
+
 export const supabase = createClient(
   supabaseUrl || "https://placeholder-project.supabase.co",
   supabaseAnonKey || "placeholder-key"

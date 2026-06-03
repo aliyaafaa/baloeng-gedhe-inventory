@@ -50,32 +50,32 @@ export default function DashboardPage() {
         <DashboardCard
           title="Pendapatan"
           value={formatRupiah(totalIncome)}
-          desc={orders.length === 0 ? "Belum ada pemasukan" : "+12.5% vs kemarin"}
+          desc={orders.length === 0 ? "Belum ada pemasukan" : "Total transaksi"}
         />
 
         <DashboardCard
           title="Total Order"
           value={orders.length}
-          desc="Order aktif"
+          desc={orders.length === 0 ? "Tidak ada order" : "Order aktif"}
         />
 
         <DashboardCard
           title="Produksi Aktif"
           value={produksiAktif}
-          desc="Workflow berjalan"
+          desc={produksiAktif === 0 ? "Tidak ada produksi aktif" : "Workflow berjalan"}
         />
 
         <DashboardCard
           title="Sisa Stok Gudang"
           value={warehouseStock.length}
-          desc="Material tersedia"
+          desc={warehouseStock.length === 0 ? "Sisa material kosong" : "Material tersedia"}
         />
 
         <DashboardCard
           dark
           title="Laba Bersih"
           value={formatRupiah(netProfit)}
-          desc="Manufacturing Profit"
+          desc={netProfit === 0 ? "Belum ada laba" : "Manufacturing Profit"}
         />
 
       </div>
@@ -118,43 +118,49 @@ export default function DashboardPage() {
 
           <div className="space-y-8">
 
-            {productionList.map((item) => (
-
-              <div key={item.id}>
-
-                <div className="flex justify-between mb-3">
-
-                  <h3 className="font-bold text-xl">
-                    {item.product}
-                  </h3>
-
-                  <span className="font-semibold">
-                    {item.progress}%
-                  </span>
-
-                </div>
-
-                <div className="w-full h-3 bg-gray-100 rounded-full">
-
-                  <div
-                    className="h-3 rounded-full bg-red-700"
-                    style={{
-                      width:
-                        `${item.progress}%`
-                    }}
-                  ></div>
-
-                </div>
-
-                <p className="text-gray-400 mt-2 text-sm">
-
-                  {item.status}
-
-                </p>
-
+            {productionList.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 font-medium">
+                Belum ada order produksi
               </div>
+            ) : (
+              productionList.map((item) => (
 
-            ))}
+                <div key={item.id}>
+
+                  <div className="flex justify-between mb-3">
+
+                    <h3 className="font-bold text-xl">
+                      {item.product}
+                    </h3>
+
+                    <span className="font-semibold">
+                      {item.progress}%
+                    </span>
+
+                  </div>
+
+                  <div className="w-full h-3 bg-gray-100 rounded-full">
+
+                    <div
+                      className="h-3 rounded-full bg-red-700"
+                      style={{
+                        width:
+                          `${item.progress}%`
+                      }}
+                    ></div>
+
+                  </div>
+
+                  <p className="text-gray-400 mt-2 text-sm">
+
+                    {item.status}
+
+                  </p>
+
+                </div>
+
+              ))
+            )}
 
           </div>
 

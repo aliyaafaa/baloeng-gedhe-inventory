@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import defaultSettings from "../data/defaultSettings";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
 
 export interface Order {
   id: number;
@@ -11,6 +12,13 @@ export interface Order {
   progress: number;
   createdAt: Date | string;
   deadline?: string;
+  
+  // Supabase properties for backward/forward compatibility
+  invoice_no?: string;
+  customer_name?: string;
+  product_name?: string;
+  quantity?: number;
+  total_amount?: number;
 }
 
 export interface FinanceData {
@@ -119,22 +127,141 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* ================= ORDERS ================= */
   const [orders, setOrders] = useState<Order[]>([]);
 
+  const loadOrders = async () => {
+    // Initial empty states
+    setOrders([]);
+    setProductionList([]);
+    setWarehouseStock([]);
+    setExpenseRecords([]);
+    setFinanceData({ income: 0, expense: 0, profit: 0 });
+    setStockData([]);
+
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    try {
+      // 1. Fetch Orders (Dashboard / POS orders)
+      const { data: ordersData, error: ordersErr } = await supabase
+        .from("orders")
+        .select("*")
+        .order("id", { ascending: false });
+
+      let parsedOrders: Order[] = [];
+      if (!ordersErr && ordersData) {
+        parsedOrders = ordersData.map((item: any) => ({
+          id: item.id,
+          customer: item.customer_name || "-",
+          product: item.product_name || "-",
+          qty: Number(item.qty || 1),
+          total: Number(item.subtotal || 0),
+          status: item.production_status || "On Production",
+          progress: item.progress || 10,
+          deadline: item.deadline || "",
+          createdAt: item.created_at || new Date().toISOString(),
+        }));
+        setOrders(parsedOrders);
+      } else if (ordersErr) {
+        console.error("Supabase orders load error:", ordersErr);
+      }
+
+      // 2. Fetch Production Batches (Pantau Produksi)
+      const { data: batchesData, error: batchesErr } = await supabase
+        .from("production_batches")
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (!batchesErr && batchesData && batchesData.length > 0) {
+        const parsedBatches: Order[] = batchesData.map((item: any) => ({
+          id: item.id,
+          customer: item.customer_name || item.customer || "-",
+          product: item.product_name || item.product || "-",
+          qty: Number(item.qty || item.quantity || 1),
+          total: Number(item.total_amount || item.total || 0),
+          status: item.production_status || item.status || "On Production",
+          progress: Number(item.progress || 10),
+          deadline: item.deadline || "",
+          createdAt: item.created_at || item.createdAt || new Date().toISOString(),
+        }));
+        setProductionList(parsedBatches);
+      } else {
+        // Fallback to active orders if production_batches is empty or doesn't exist
+        const activeFromOrders = parsedOrders.filter(o => o.status !== "Draft");
+        setProductionList(activeFromOrders);
+      }
+
+      // 3. Fetch Inventory Materials
+      const { data: inventoryData, error: inventoryErr } = await supabase
+        .from("inventory_materials")
+        .select("*")
+        .order("id", { ascending: false });
+
+      if (!inventoryErr && inventoryData) {
+        const parsedStock = inventoryData.map((item: any) => ({
+          id: item.id,
+          materialName: item.material_name || item.materialName || "-",
+          category: item.category || "-",
+          stockLeft: Number(item.stock_left || item.stockLeft || 0),
+          unit: item.unit || "pcs",
+          sourceOrder: item.source_order || item.sourceOrder || "-"
+        }));
+        setWarehouseStock(parsedStock);
+      }
+
+      // 4. Fetch Financial Transactions (Laporan Keuangan)
+      const { data: financeRecords, error: financeErr } = await supabase
+        .from("financial_transactions")
+        .select("*")
+        .order("id", { ascending: false });
+
+      let parsedExpenses: ExpenseRecord[] = [];
+      if (!financeErr && financeRecords) {
+        parsedExpenses = financeRecords.map((item: any) => ({
+          id: item.id,
+          date: item.date || item.transaction_date || new Date().toISOString().split('T')[0],
+          category: item.category || "-",
+          materialName: item.material_name || item.materialName || "-",
+          materialDetail: item.material_detail || item.materialDetail || "-",
+          qty: Number(item.qty || item.quantity || 0),
+          unit: item.unit || "pcs",
+          price: Number(item.price || 0),
+          total: Number(item.total || item.total_amount || 0),
+          sourceOrder: item.source_order || item.sourceOrder || "-",
+          customer: item.customer || "-"
+        }));
+        setExpenseRecords(parsedExpenses);
+      }
+
+      // 5. Compute Finances dynamically based on Supabase tables
+      const computedIncome = parsedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+      const computedExpense = parsedExpenses.reduce((sum, item) => sum + Number(item.total || 0), 0);
+      setFinanceData({
+        income: computedIncome,
+        expense: computedExpense,
+        profit: computedIncome - computedExpense
+      });
+
+    } catch (err) {
+      console.error("Error loading multiple tables from Supabase:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
   /* ================= PRODUKSI ================= */
   const [productionList, setProductionList] = useState<Order[]>([]);
 
   /* ================= KEUANGAN ================= */
   const [financeData, setFinanceData] = useState<FinanceData>({
-    income: 111000000,
-    expense: 23250000,
-    profit: 87750000,
+    income: 0,
+    expense: 0,
+    profit: 0,
   });
 
   /* ================= STOK ================= */
-  const [stockData, setStockData] = useState<StockItem[]>([
-    { name: "Kain Linen", qty: 120 },
-    { name: "Cotton Combed", qty: 80 },
-    { name: "Denim", qty: 45 },
-  ]);
+  const [stockData, setStockData] = useState<StockItem[]>([]);
 
   /* ================= SETTINGS ================= */
   const [settings, setSettings] = useState<typeof defaultSettings>(defaultSettings);
@@ -328,7 +455,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   /* ================= CREATE ORDER ================= */
-  const createOrder = (order: Omit<Order, 'progress'>) => {
+  const createOrder = async (order: Omit<Order, 'progress'>) => {
     const fullOrder = { ...order, progress: 10 }; // Initial progress 10%
 
     /* SAVE ORDER */
@@ -354,6 +481,51 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     /* CREATE MATERIAL DRAFT */
     createMaterialDraftFromOrder(order);
+
+    /* SAVE TO SUPABASE */
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from("orders")
+          .insert([
+            {
+              invoice_no: `INV-${Date.now()}`,
+              customer_name: order.customer,
+              customer_company: "-",
+              product_name: order.product,
+              qty: order.qty,
+              unit_price: order.qty > 0 ? order.total / order.qty : order.total,
+              subtotal: order.total,
+              payment_status: "Belum Bayar",
+              production_status: order.status || "On Production",
+              deadline: order.deadline || "",
+            },
+          ])
+          .select();
+
+        if (error) {
+          console.error(error);
+        } else {
+          loadOrders();
+        }
+
+        // Keep dynamic notifications aligned with database structure
+        try {
+          await supabase
+            .from('notifications')
+            .insert([
+              {
+                title: 'Order Baru',
+                message: `${order.customer}\n membuat order`
+              }
+            ]);
+        } catch (nErr) {
+          // Ignore if notification table is missing or structured differently
+        }
+      } catch (err) {
+        console.error("Failed to insert order into Supabase:", err);
+      }
+    }
   };
 
   return (

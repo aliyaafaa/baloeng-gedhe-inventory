@@ -133,194 +133,7 @@ export default function TrackingPage() {
   }
 
   const [workflowData, setWorkflowData] =
-    useState<any[]>([
-
-      {
-        id: 1,
-
-        customer:
-          "PT Patra Niaga",
-
-        product:
-          "PDL PDH Lapangan",
-
-        qty: 500,
-
-        deadline:
-          "25 Mei 2026",
-
-        progress: 64,
-
-        status:
-          "Sedang Produksi",
-
-        steps: [
-
-          {
-            id: 1,
-
-            title:
-              "Pengadaan Kain",
-
-            desc:
-              "Kain drill dan bahan pelengkap tersedia.",
-
-            status:
-              "done",
-
-            progress: 100,
-
-            icon: Package,
-          },
-
-          {
-            id: 2,
-
-            title:
-              "Potong Kain",
-
-            desc:
-              "500 pcs pola berhasil dipotong.",
-
-            status:
-              "done",
-
-            progress: 100,
-
-            icon: Scissors,
-          },
-
-          {
-            id: 3,
-
-            title:
-              "Bordir Logo",
-
-            desc:
-              "Logo dada dan lengan selesai.",
-
-            status:
-              "done",
-
-            progress: 100,
-
-            icon: Shirt,
-          },
-
-          {
-            id: 4,
-
-            title:
-              "Jahit Produksi",
-
-            desc:
-              "320 pcs selesai dijahit.",
-
-            status:
-              "progress",
-
-            progress: 64,
-
-            icon: Pencil,
-          },
-
-          {
-            id: 5,
-
-            title:
-              "Quality Control",
-
-            desc:
-              "Menunggu jahit selesai.",
-
-            status:
-              "pending",
-
-            progress: 0,
-
-            icon: Search,
-          },
-
-          {
-            id: 6,
-
-            title:
-              "Packing & Delivery",
-
-            desc:
-              "Menunggu QC selesai.",
-
-            status:
-              "pending",
-
-            progress: 0,
-
-            icon: Truck,
-          },
-        ],
-      },
-
-      /* ================= PRODUK 2 ================= */
-
-      {
-        id: 2,
-
-        customer:
-          "Bank Mandiri",
-
-        product:
-          "Kaos Gathering",
-
-        qty: 300,
-
-        deadline:
-          "30 Mei 2026",
-
-        progress: 25,
-
-        status:
-          "Cutting",
-
-        steps: [
-
-          {
-            id: 1,
-            title:
-              "Pengadaan Kain",
-            desc:
-              "Material tersedia.",
-            status:
-              "done",
-            progress: 100,
-            icon: Package,
-          },
-
-          {
-            id: 2,
-            title:
-              "Potong Kain",
-            desc:
-              "75 pcs selesai dipotong.",
-            status:
-              "progress",
-            progress: 25,
-            icon: Scissors,
-          },
-
-          {
-            id: 3,
-            title:
-              "Sablon",
-            desc:
-              "Belum dimulai.",
-            status:
-              "pending",
-            progress: 0,
-            icon: Shirt,
-          },
-        ],
-      },
-    ])
+    useState<any[]>([])
 
   const getActiveWorkflow = () => {
     if (!activeOrder) return null;
@@ -652,73 +465,81 @@ export default function TrackingPage() {
             </thead>
 
             <tbody>
-              {filteredOrders.map((order) => {
-                // Determine current progress
-                const exists = workflowData.find(item => item.id === order.id);
-                const progressToDisplay = exists ? exists.progress : (order.progress || 0);
-                const statusToDisplay = exists ? exists.status : (order.status || "Sedang Produksi");
-                const deadlineInfo = getDeadlineInfo(order.createdAt, order.deadline);
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                    Belum ada order produksi
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map((order) => {
+                  // Determine current progress
+                  const exists = workflowData.find(item => item.id === order.id);
+                  const progressToDisplay = exists ? exists.progress : (order.progress || 0);
+                  const statusToDisplay = exists ? exists.status : (order.status || "Sedang Produksi");
+                  const deadlineInfo = getDeadlineInfo(order.createdAt, order.deadline);
 
-                return (
-                  <tr
-                    key={order.id}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${
-                      activeOrder?.id === order.id ? "bg-red-50" : ""
-                    }`}
-                  >
-                    <td className="py-4 font-semibold">
-                      {order.customer || "Guest"}
-                    </td>
+                  return (
+                    <tr
+                      key={order.id}
+                      className={`border-b border-gray-100 hover:bg-gray-50 ${
+                        activeOrder?.id === order.id ? "bg-red-50" : ""
+                      }`}
+                    >
+                      <td className="py-4 font-semibold">
+                        {order.customer || "Guest"}
+                      </td>
 
-                    <td>{order.product}</td>
+                      <td>{order.product}</td>
 
-                    <td>{order.qty || 1} pcs</td>
+                      <td>{order.qty || 1} pcs</td>
 
-                    <td>{order.deadline || "-"}</td>
+                      <td>{order.deadline || "-"}</td>
 
-                    <td>
-                      <span
-                        className={`px-3 py-2 rounded-full text-xs font-semibold ${
-                          deadlineInfo.status === "late"
-                            ? "bg-red-100 text-red-700"
-                            : deadlineInfo.status === "today"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {deadlineInfo.label}
-                      </span>
-                    </td>
+                      <td>
+                        <span
+                          className={`px-3 py-2 rounded-full text-xs font-semibold ${
+                            deadlineInfo.status === "late"
+                              ? "bg-red-100 text-red-700"
+                              : deadlineInfo.status === "today"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {deadlineInfo.label}
+                        </span>
+                      </td>
 
-                    <td>
-                      <div className="w-32 bg-gray-100 rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full bg-red-700"
-                          style={{ width: `${progressToDisplay}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {progressToDisplay}%
-                      </p>
-                    </td>
+                      <td>
+                        <div className="w-32 bg-gray-100 rounded-full h-2">
+                          <div
+                            className="h-2 rounded-full bg-red-700"
+                            style={{ width: `${progressToDisplay}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {progressToDisplay}%
+                        </p>
+                      </td>
 
-                    <td>
-                      <span className="px-3 py-2 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">
-                        {statusToDisplay}
-                      </span>
-                    </td>
+                      <td>
+                        <span className="px-3 py-2 rounded-full bg-orange-100 text-orange-700 text-xs font-semibold">
+                          {statusToDisplay}
+                        </span>
+                      </td>
 
-                    <td>
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold"
-                      >
-                        Pantau
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td>
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold"
+                        >
+                          Pantau
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

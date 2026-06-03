@@ -174,9 +174,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
         console.error("Supabase orders load error:", ordersErr);
       }
 
-      // 2. Map Production Batches from Orders (Pantau Produksi)
-      // Since orders is the single source of truth, we populate productionList right from parsedOrders
-      setProductionList(parsedOrders);
+      // 2. Map Production Batches (Pantau Produksi)
+      try {
+        const { data: batchesData, error: batchesErr } = await supabase
+          .from("production_batches")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (!batchesErr && batchesData && batchesData.length > 0) {
+          const parsedBatches: Order[] = batchesData.map((item: any) => ({
+            id: item.id,
+            customer: item.customer_name || item.customer || "-",
+            product: item.product_name || item.product || "-",
+            qty: Number(item.qty || item.quantity || 1),
+            total: Number(item.total_amount || item.total || 0),
+            status: item.status || "On Production",
+            progress: Number(item.progress || 10),
+            deadline: item.deadline || "",
+            createdAt: item.created_at || new Date().toISOString(),
+            created_at: item.created_at,
+            invoice_no: item.invoice_no,
+          }));
+          setProductionList(parsedBatches);
+        } else {
+          setProductionList(parsedOrders);
+        }
+      } catch (pbLoadErr) {
+        console.error("Failed to load production batches:", pbLoadErr);
+        setProductionList(parsedOrders);
+      }
 
       // 3. Clear/empty inventory materials state as per instructions (not using inventory_materials table)
       setWarehouseStock([]);
@@ -460,6 +486,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error(error);
         } else {
+          // Automatically insert record to production_batches table mapping order parameters
+          try {
+            await supabase
+              .from("production_batches")
+              .insert([
+                {
+                  invoice_no: invoiceNumber,
+                  customer_name: order.customer,
+                  product_name: order.product,
+                  qty: order.qty,
+                  deadline: order.deadline || null,
+                  status: order.status || "On Production",
+                  progress: 10,
+                },
+              ]);
+          } catch (pbErr) {
+            console.error("Failed to insert production batch:", pbErr);
+          }
+
           loadOrders();
         }
 

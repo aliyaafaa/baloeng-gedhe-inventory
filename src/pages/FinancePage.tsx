@@ -359,7 +359,7 @@ export default function FinancePage() {
                 orders.map((order) => (
                   <tr key={order.id} className="border-b border-gray-100 text-sm text-slate-700">
                     <td className="py-5 font-bold text-slate-800">
-                      INV-{order.id}
+                      {order.invoice_no || `INV-${order.id}`}
                     </td>
 
                     <td className="font-semibold text-slate-700">{order.customer}</td>

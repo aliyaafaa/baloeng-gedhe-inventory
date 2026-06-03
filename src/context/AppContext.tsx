@@ -510,7 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               subtotal: order.total,
               payment_status: "Belum Bayar",
               production_status: order.status || "On Production",
-              deadline: order.deadline || "",
+              deadline: order.deadline || null,
             },
           ])
           .select();

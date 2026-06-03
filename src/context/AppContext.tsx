@@ -509,6 +509,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (error) {
           console.error(error);
         } else {
+          // Automatically insert record to financial_transactions table mapping order parameters
+          try {
+            await supabase
+              .from("financial_transactions")
+              .insert([
+                {
+                  invoice_no: invoiceNumber,
+                  customer_name: order.customer,
+                  transaction_type: "income",
+                  amount: order.total,
+                  payment_method: "Transfer",
+                  transaction_date: new Date().toISOString().split("T")[0],
+                },
+              ]);
+          } catch (ftErr) {
+            console.error("Failed to insert financial transaction:", ftErr);
+          }
+
           // Automatically insert record to production_batches table mapping order parameters
           try {
             await supabase

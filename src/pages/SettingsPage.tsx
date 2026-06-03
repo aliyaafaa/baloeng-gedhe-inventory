@@ -1,6 +1,7 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Plus, Trash2, Save } from "lucide-react"
 import defaultSettings from "../data/defaultSettings"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
 
 interface SettingsPageProps {
   settings: typeof defaultSettings
@@ -8,6 +9,140 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ settings, setSettings }: SettingsPageProps) {
+  const [dbSettingsId, setDbSettingsId] = useState<any>(null);
+  const [companyName, setCompanyName] = useState("");
+  const [companyEmail, setCompanyEmail] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [invoicePrefix, setInvoicePrefix] = useState("");
+  const [invoiceCounter, setInvoiceCounter] = useState(0);
+
+  useEffect(() => {
+    async function loadDbSettings() {
+      if (!isSupabaseConfigured()) {
+        setCompanyName(settings.business.companyName);
+        setCompanyEmail(settings.business.companyEmail);
+        setCompanyAddress(settings.business.address);
+        setInvoicePrefix(settings.invoice.prefix);
+        setInvoiceCounter(settings.invoice.startNumber);
+        return;
+      }
+      try {
+        const { data, error } = await supabase
+          .from("settings")
+          .select("*")
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          const row = data[0];
+          setDbSettingsId(row.id);
+          setCompanyName(row.company_name || "");
+          setCompanyEmail(row.company_email || "");
+          setCompanyAddress(row.company_address || "");
+          setInvoicePrefix(row.invoice_prefix || "");
+          setInvoiceCounter(Number(row.invoice_counter || 0));
+
+          setSettings((prev) => ({
+            ...prev,
+            business: {
+              ...prev.business,
+              companyName: row.company_name || prev.business.companyName,
+              companyEmail: row.company_email || prev.business.companyEmail,
+              address: row.company_address || prev.business.address,
+            },
+            invoice: {
+              ...prev.invoice,
+              prefix: row.invoice_prefix || prev.invoice.prefix,
+              startNumber: row.invoice_counter !== undefined ? Number(row.invoice_counter) : prev.invoice.startNumber,
+            },
+          }));
+        } else {
+          setCompanyName(settings.business.companyName);
+          setCompanyEmail(settings.business.companyEmail);
+          setCompanyAddress(settings.business.address);
+          setInvoicePrefix(settings.invoice.prefix);
+          setInvoiceCounter(settings.invoice.startNumber);
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+        setCompanyName(settings.business.companyName);
+        setCompanyEmail(settings.business.companyEmail);
+        setCompanyAddress(settings.business.address);
+        setInvoicePrefix(settings.invoice.prefix);
+        setInvoiceCounter(settings.invoice.startNumber);
+      }
+    }
+    loadDbSettings();
+  }, []);
+
+  const handleSaveSettings = async () => {
+    if (!isSupabaseConfigured()) {
+      alert("Supabase tidak terkonfigurasi.");
+      return;
+    }
+
+    try {
+      const payload = {
+        company_name: companyName,
+        company_email: companyEmail,
+        company_address: companyAddress,
+        invoice_prefix: invoicePrefix,
+        invoice_counter: Number(invoiceCounter),
+      };
+
+      let error;
+      if (dbSettingsId) {
+        const { error: err } = await supabase
+          .from("settings")
+          .update(payload)
+          .eq("id", dbSettingsId);
+        error = err;
+      } else {
+        const { data: checkData } = await supabase.from("settings").select("id").limit(1);
+        if (checkData && checkData.length > 0) {
+          setDbSettingsId(checkData[0].id);
+          const { error: err } = await supabase
+            .from("settings")
+            .update(payload)
+            .eq("id", checkData[0].id);
+          error = err;
+        } else {
+          const { data: insertedData, error: err } = await supabase
+            .from("settings")
+            .insert([payload])
+            .select();
+          error = err;
+          if (!error && insertedData && insertedData.length > 0) {
+            setDbSettingsId(insertedData[0].id);
+          }
+        }
+      }
+
+      if (error) {
+        console.error("Gagal menyimpan pengaturan ke Supabase:", error);
+        alert("Gagal menyimpan pengaturan: " + error.message);
+      } else {
+        setSettings((prev) => ({
+          ...prev,
+          business: {
+            ...prev.business,
+            companyName: companyName,
+            companyEmail: companyEmail,
+            address: companyAddress,
+          },
+          invoice: {
+            ...prev.invoice,
+            prefix: invoicePrefix,
+            startNumber: Number(invoiceCounter),
+          }
+        }));
+        alert("Pengaturan sukses disimpan!");
+      }
+    } catch (err: any) {
+      console.error("Terjadi kesalahan saat menyimpan pengaturan:", err);
+      alert("Terjadi kesalahan: " + err.message);
+    }
+  };
+
   const [adminSettings, setAdminSettings] = useState({
     email: "admin@baloenggedhe.com",
     password: "",
@@ -131,24 +266,24 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
           <Input
             id="input-biz-name"
             label="Nama Usaha"
-            value={settings.business.companyName}
-            onChange={(e) => updateBusiness("companyName", e.target.value)}
+            value={companyName}
+            onChange={(e) => setCompanyName(e.target.value)}
           />
 
           <Input
             id="input-biz-email"
             label="Email"
             type="email"
-            value={settings.business.companyEmail}
-            onChange={(e) => updateBusiness("companyEmail", e.target.value)}
+            value={companyEmail}
+            onChange={(e) => setCompanyEmail(e.target.value)}
             placeholder="Masukkan email perusahaan"
           />
 
           <Input
             id="input-biz-address"
             label="Alamat"
-            value={settings.business.address}
-            onChange={(e) => updateBusiness("address", e.target.value)}
+            value={companyAddress}
+            onChange={(e) => setCompanyAddress(e.target.value)}
           />
 
           <Input
@@ -231,16 +366,16 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
           <Input
             id="input-inv-prefix"
             label="Prefix Invoice"
-            value={settings.invoice.prefix}
-            onChange={(e) => updateInvoice("prefix", e.target.value)}
+            value={invoicePrefix}
+            onChange={(e) => setInvoicePrefix(e.target.value)}
           />
 
           <Input
             id="input-inv-start"
             label="Nomor Awal Invoice"
             type="number"
-            value={settings.invoice.startNumber}
-            onChange={(e) => updateInvoice("startNumber", Number(e.target.value))}
+            value={invoiceCounter}
+            onChange={(e) => setInvoiceCounter(Number(e.target.value))}
           />
 
           <Select
@@ -354,9 +489,12 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
       </section>
 
       <div className="flex justify-end pt-4">
-        <button className="px-6 py-4 rounded-2xl bg-red-700 text-white font-bold flex items-center gap-2 shadow hover:bg-red-800 transition">
+        <button 
+          onClick={handleSaveSettings}
+          className="px-6 py-4 rounded-2xl bg-red-700 text-white font-bold flex items-center gap-2 shadow hover:bg-red-800 transition"
+        >
           <Save size={18} />
-          Pengaturan Tersimpan Otomatis
+          Simpan Pengaturan
         </button>
       </div>
     </div>

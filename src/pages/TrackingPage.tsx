@@ -35,7 +35,7 @@ export default function TrackingPage() {
   const activeOrder = selectedOrder || filteredOrders[0]
 
   const getDaysLeft = (deadline?: string) => {
-    if (!deadline) return "-"
+    if (!deadline) return "Belum ditentukan"
 
     const today = new Date()
     const dueDate = new Date(deadline)
@@ -56,7 +56,7 @@ export default function TrackingPage() {
   const getDeadlineInfo = (createdAt: any, deadline: any) => {
     if (!deadline) {
       return {
-        label: "-",
+        label: "Belum ditentukan",
         percent: 0,
         status: "none",
       }
@@ -497,7 +497,15 @@ export default function TrackingPage() {
 
                       <td>{order.qty || 1} pcs</td>
 
-                      <td>{order.deadline || "-"}</td>
+                      <td>
+                        {order.deadline
+                          ? new Date(order.deadline).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })
+                          : "Belum ditentukan"}
+                      </td>
 
                       <td>
                         <span
@@ -506,6 +514,8 @@ export default function TrackingPage() {
                               ? "bg-red-100 text-red-700"
                               : deadlineInfo.status === "today"
                               ? "bg-orange-100 text-orange-700"
+                              : deadlineInfo.status === "none"
+                              ? "bg-slate-100 text-slate-500"
                               : "bg-yellow-100 text-yellow-700"
                           }`}
                         >
@@ -556,7 +566,18 @@ export default function TrackingPage() {
             <InfoBox title="Customer" value={activeOrder.customer || "Guest"} />
             <InfoBox title="Produk" value={activeOrder.product} />
             <InfoBox title="Quantity" value={`${activeOrder.qty || 1} pcs`} />
-            <InfoBox title="Deadline" value={activeOrder.deadline || "-"} />
+            <InfoBox 
+              title="Deadline" 
+              value={
+                activeOrder.deadline
+                  ? new Date(activeOrder.deadline).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "Belum ditentukan"
+              } 
+            />
 
           </div>
 

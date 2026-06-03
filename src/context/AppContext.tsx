@@ -204,8 +204,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setProductionList(parsedOrders);
       }
 
-      // 3. Clear/empty inventory materials state as per instructions (not using inventory_materials table)
-      setWarehouseStock([]);
+      // 3. Load Materials from inventory_materials table
+      try {
+        const { data: inventoryData, error: inventoryErr } = await supabase
+          .from("inventory_materials")
+          .select("*")
+          .order("id", { ascending: false });
+
+        if (!inventoryErr && inventoryData) {
+          const parsedStock = inventoryData.map((item: any) => ({
+            id: item.id,
+            materialName: item.material_name || item.materialName || "-",
+            category: item.category || "-",
+            stockLeft: Number(item.stock_qty !== undefined ? item.stock_qty : (item.stock_left !== undefined ? item.stock_left : (item.stockLeft || 0))),
+            unit: item.unit || "pcs",
+            supplier: item.supplier || "-",
+            sourceOrder: item.source_order || item.sourceOrder || "-"
+          }));
+          setWarehouseStock(parsedStock);
+        } else {
+          setWarehouseStock([]);
+        }
+      } catch (invErr) {
+        console.error("Failed to load inventory materials:", invErr);
+        setWarehouseStock([]);
+      }
 
       // 4. Clear/empty financial transactions state as per instructions (not using financial_transactions table)
       setExpenseRecords([]);
@@ -503,6 +526,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
               ]);
           } catch (pbErr) {
             console.error("Failed to insert production batch:", pbErr);
+          }
+
+          // Automatically insert draft material to inventory_materials table mapping order parameters
+          try {
+            await supabase
+              .from("inventory_materials")
+              .insert([
+                {
+                  material_name: order.product,
+                  stock_qty: order.qty,
+                  category: "Produksi",
+                  unit: "pcs",
+                  supplier: "-",
+                },
+              ]);
+          } catch (imErr) {
+            console.error("Failed to insert inventory material draft:", imErr);
           }
 
           loadOrders();

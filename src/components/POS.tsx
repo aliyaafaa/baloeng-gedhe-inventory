@@ -193,6 +193,7 @@ export default function POS() {
   const [customPrice, setCustomPrice] = useState(70000);
   const [customerName, setCustomerName] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [productionDeadline, setProductionDeadline] = useState("");
   const [showUpdateProduksi, setShowUpdateProduksi] = useState(false);
   const [showSuratKerja, setShowSuratKerja] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState(settings.production.workflow[0] || "Bordir Logo");
@@ -645,10 +646,15 @@ export default function POS() {
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-heritage-red/20 focus:border-heritage-red/30 transition-all font-medium"
                 />
-                <input
-                  type="date"
-                  className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-heritage-red/20 focus:border-heritage-red/30 transition-all font-medium"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] block pl-1">Deadline Produksi</label>
+                  <input
+                    type="date"
+                    value={productionDeadline}
+                    onChange={(e) => setProductionDeadline(e.target.value)}
+                    className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-heritage-red/20 focus:border-heritage-red/30 transition-all font-medium text-slate-700"
+                  />
+                </div>
               </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 -mr-2">
@@ -768,6 +774,7 @@ export default function POS() {
                       status: "On Production",
                       createdAt: new Date().toISOString().split("T")[0],
                       invoice_no: invoiceNumber,
+                      deadline: productionDeadline || undefined,
                     };
                     createOrder(newOrder);
                     setShowNextStep(true);
@@ -1096,6 +1103,10 @@ export default function POS() {
                     onClick={() => {
                       setShowNextStep(false);
                       setShowProductionTracking(true);
+                      setCustomerName("");
+                      setCompanyName("");
+                      setProductionDeadline("");
+                      setCart([]);
                     }}
                     className="
                       w-full
@@ -1114,7 +1125,13 @@ export default function POS() {
                     Pantau Produksi
                   </button>
                   <button
-                    onClick={() => setShowNextStep(false)}
+                    onClick={() => {
+                      setShowNextStep(false);
+                      setCustomerName("");
+                      setCompanyName("");
+                      setProductionDeadline("");
+                      setCart([]);
+                    }}
                     className="
                       w-full
                       border

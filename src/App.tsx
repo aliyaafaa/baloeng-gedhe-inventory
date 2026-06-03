@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useNavigate, useLocation, Navigate } from "react-router-dom"
 
 import DashboardPage from "./pages/DashboardPage"
 import POSPage from "./pages/POSPage"
@@ -7,6 +8,7 @@ import FinancePage from "./pages/FinancePage"
 import TrackingPage from "./pages/TrackingPage"
 import NotificationPage from "./pages/NotificationPage"
 import SettingsPage from "./pages/SettingsPage"
+import LoginPage from "./pages/LoginPage"
 import NotificationPopup from "./components/NotificationPopup"
 
 import { useApp } from "./context/AppContext"
@@ -20,17 +22,34 @@ import {
   Eye,
   Bell,
   Settings,
+  LogOut,
 } from "lucide-react"
 
 export default function App() {
 
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [activePage, setActivePage] =
     useState("dashboard")
+
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem("token") !== null || sessionStorage.getItem("isLoggedIn") === "true"
+  })
 
   const { orders, settings, setSettings } = useApp()
   const [popupNotif, setPopupNotif] = useState<AppNotification | null>(null)
   const [lastOrdersLength, setLastOrdersLength] = useState(orders.length)
   const notifications = generateNotifications(orders)
+
+  useEffect(() => {
+    const token = localStorage.getItem("token") || sessionStorage.getItem("isLoggedIn") === "true"
+    if (!token && location.pathname !== "/login") {
+      navigate("/login")
+    } else if (token && location.pathname === "/login") {
+      navigate("/")
+    }
+  }, [isLoggedIn, location.pathname, navigate])
 
   useEffect(() => {
     const freshNotifications = generateNotifications(orders)
@@ -53,6 +72,23 @@ export default function App() {
       return () => clearTimeout(timer)
     }
   }, [orders, lastOrdersLength])
+
+  const handleLogin = () => {
+    setIsLoggedIn(true)
+    sessionStorage.setItem("isLoggedIn", "true")
+    localStorage.setItem("user", JSON.stringify({ email: "admin@baloenggedhe.com" }))
+    localStorage.setItem("token", "mock-token-123456")
+    navigate("/")
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem("user")
+    localStorage.removeItem("token")
+    sessionStorage.removeItem("isLoggedIn")
+    setIsLoggedIn(false)
+
+    navigate("/login")
+  }
 
   const menus = [
     {
@@ -122,6 +158,10 @@ export default function App() {
     }
   }
 
+  if (!isLoggedIn || location.pathname === "/login") {
+    return <LoginPage onLogin={handleLogin} />
+  }
+
   return (
 
     <div className="min-h-screen bg-[#F8F8F8] flex">
@@ -144,7 +184,7 @@ export default function App() {
         <div>
 
           <h1 className="text-4xl font-bold leading-tight">
-            {settings.business.name}
+            {settings.business.companyName}
           </h1>
 
           <p className="text-gray-400 mt-2 font-semibold">
@@ -237,8 +277,29 @@ export default function App() {
       <main className="flex-1 min-w-0 overflow-x-hidden bg-[#F8F9FB] flex flex-col">
 
         {/* TOPBAR */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-end px-4 sm:px-6 lg:px-8">
-          {/* kosong / bisa dipakai tombol global nanti */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center lg:hidden font-bold text-red-600 text-lg">
+            {settings.business.companyName}
+          </div>
+          <div className="hidden lg:block text-slate-500 text-sm font-medium">
+            Sistem Operasional dan Keuangan
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right hidden sm:block">
+              <span className="block text-sm font-bold text-slate-800">
+                {settings.business.adminRole}
+              </span>
+              <span className="block text-xs text-slate-400 font-medium">
+                Administrator
+              </span>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-6 py-3 border border-red-200 text-red-600 rounded-2xl font-semibold hover:bg-red-50 cursor-pointer"
+            >
+              Keluar
+            </button>
+          </div>
         </header>
 
         {/* PAGE CONTENT */}

@@ -1,10 +1,9 @@
 const defaultSettings = {
   business: {
-    name: "Baloeng Gedhe",
+    companyName: "Baloeng Gedhe",
     subtitle: "by 2 BD03C TUP",
-    email: "hello@baloenggedhe.com",
+    companyEmail: "",
     address: "Purwokerto Timur, Indonesia",
-    adminName: "Admin Baloeng",
     adminRole: "Production Manager",
   },
 

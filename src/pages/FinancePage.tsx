@@ -88,7 +88,7 @@ export default function FinancePage() {
           </h1>
 
           <p className="page-subtitle">
-            Ringkasan pemasukan, pengeluaran, dan laba usaha {settings.business.name}
+            Ringkasan pemasukan, pengeluaran, dan laba usaha {settings.business.companyName}
           </p>
         </div>
 

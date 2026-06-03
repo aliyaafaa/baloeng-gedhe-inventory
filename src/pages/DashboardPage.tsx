@@ -37,7 +37,7 @@ export default function DashboardPage() {
       {/* HEADER */}
       <div className="mb-8">
         <h1 className="page-title">
-          Dashboard {settings.business.name}
+          Dashboard {settings.business.companyName}
         </h1>
         <p className="page-subtitle">
           Ringkasan operasional dan keuangan hari ini

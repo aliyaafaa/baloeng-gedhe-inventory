@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useState } from "react"
 import { Plus, Trash2, Save } from "lucide-react"
 import defaultSettings from "../data/defaultSettings"
 
@@ -8,6 +8,12 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ settings, setSettings }: SettingsPageProps) {
+  const [adminSettings, setAdminSettings] = useState({
+    email: "admin@baloenggedhe.com",
+    password: "",
+    role: "Production Manager"
+  });
+
   const updateBusiness = (field: string, value: string) => {
     setSettings((prev) => ({
       ...prev,
@@ -125,16 +131,17 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
           <Input
             id="input-biz-name"
             label="Nama Usaha"
-            value={settings.business.name}
-            onChange={(e) => updateBusiness("name", e.target.value)}
+            value={settings.business.companyName}
+            onChange={(e) => updateBusiness("companyName", e.target.value)}
           />
 
           <Input
             id="input-biz-email"
             label="Email"
             type="email"
-            value={settings.business.email}
-            onChange={(e) => updateBusiness("email", e.target.value)}
+            value={settings.business.companyEmail}
+            onChange={(e) => updateBusiness("companyEmail", e.target.value)}
+            placeholder="Masukkan email perusahaan"
           />
 
           <Input
@@ -145,18 +152,74 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
           />
 
           <Input
-            id="input-biz-admin-name"
-            label="Nama Admin"
-            value={settings.business.adminName}
-            onChange={(e) => updateBusiness("adminName", e.target.value)}
-          />
-
-          <Input
             id="input-biz-admin-role"
             label="Role Admin"
             value={settings.business.adminRole}
             onChange={(e) => updateBusiness("adminRole", e.target.value)}
           />
+        </div>
+      </section>
+
+      {/* LOGIN ADMIN */}
+      <section className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-7 shadow-sm animate-fade-in" id="admin-login-settings-sec">
+        <h2 className="text-xl font-bold mb-5 flex items-center text-slate-800">Email Login Admin</h2>
+        
+        <div className="space-y-6">
+          <div className="max-w-md">
+            <label className="setting-label block text-xs font-bold tracking-widest uppercase text-gray-400 mb-2">
+              Email Login Admin (Pratinjau)
+            </label>
+            <input
+              type="email"
+              value={adminSettings.email}
+              onChange={(e) =>
+                setAdminSettings({
+                  ...adminSettings,
+                  email: e.target.value
+                })
+              }
+              placeholder="Masukkan email admin"
+              className="w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition shadow-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="setting-label text-xs font-bold tracking-widest uppercase text-gray-400 block mb-2">
+                Email Login Admin
+              </label>
+
+              <input
+                type="email"
+                value={adminSettings.email}
+                onChange={(e) =>
+                  setAdminSettings({
+                    ...adminSettings,
+                    email: e.target.value
+                  })
+                }
+                className="setting-input w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition"
+              />
+            </div>
+
+            <div>
+              <label className="setting-label text-xs font-bold tracking-widest uppercase text-gray-400 block mb-2">
+                Email Login Admin
+              </label>
+
+              <input
+                type="email"
+                value={adminSettings.email}
+                onChange={(e) =>
+                  setAdminSettings({
+                    ...adminSettings,
+                    email: e.target.value
+                  })
+                }
+                className="setting-input w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -306,6 +369,7 @@ interface InputProps {
   value?: string | number
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
   type?: string
+  placeholder?: string
 }
 
 function Input({ label, ...props }: InputProps) {

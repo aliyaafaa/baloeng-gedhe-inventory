@@ -1380,12 +1380,12 @@ export default function POS() {
               <div className="flex flex-col md:flex-row md:justify-between gap-8 border-b border-gray-200 pb-10">
                 <div className="space-y-4">
                   <div>
-                    <h2 className="font-black text-2xl text-slate-800 tracking-tight">{settings.business.name}</h2>
+                    <h2 className="font-black text-2xl text-slate-800 tracking-tight">{settings.business.companyName}</h2>
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">MANUFACTURING & CUSTOM APPAREL</p>
                   </div>
                   <div className="text-sm text-slate-500 font-medium leading-relaxed">
                     <p>{settings.business.address}</p>
-                    <p>{settings.business.email}</p>
+                    <p>{settings.business.companyEmail}</p>
                   </div>
                 </div>
                 <div className="md:text-right space-y-4">

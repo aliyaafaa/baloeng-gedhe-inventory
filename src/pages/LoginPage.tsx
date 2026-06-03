@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import bgLogo from "../assets/images/bg_logo_1779866363731.png"
+import { supabase, isSupabaseConfigured } from "../lib/supabase"
 
 interface LoginPageProps {
   onLogin: () => void
@@ -10,16 +11,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [supabaseActive, setSupabaseActive] = useState(false)
 
   useEffect(() => {
     const savedEmail = localStorage.getItem("rememberEmail")
     if (savedEmail) {
       setEmail(savedEmail)
     }
+    setSupabaseActive(isSupabaseConfigured())
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     
     if (!email) {
       setError("Email Admin tidak boleh kosong!")
@@ -29,6 +34,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       setError("Password tidak boleh kosong!")
       return
     }
+
+    setIsLoading(true)
     
     if (rememberMe) {
       localStorage.setItem("rememberEmail", email)
@@ -37,8 +44,39 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       localStorage.removeItem("rememberPassword")
     }
 
-    setError("")
-    onLogin()
+    try {
+      if (supabaseActive) {
+        // Authenticate with real Supabase Auth
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (authError) {
+          setError(authError.message)
+          setIsLoading(false)
+          return
+        }
+
+        if (data.session) {
+          localStorage.setItem("token", data.session.access_token)
+          localStorage.setItem("user", JSON.stringify(data.session.user || { email }))
+          sessionStorage.setItem("isLoggedIn", "true")
+        }
+      } else {
+        // Fallback for easy offline/preview testing
+        localStorage.setItem("token", "mock-token-123456")
+        localStorage.setItem("user", JSON.stringify({ email }))
+        sessionStorage.setItem("isLoggedIn", "true")
+      }
+
+      setError("")
+      onLogin()
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan koneksi")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleForgotPassword = () => {
@@ -129,11 +167,40 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
           <button
             type="submit"
-            className="w-full h-12 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl font-semibold shadow-md shadow-red-600/10 hover:shadow-lg transition cursor-pointer"
+            disabled={isLoading}
+            className={`w-full h-12 text-white rounded-xl font-semibold shadow-md transition cursor-pointer flex items-center justify-center gap-2 ${
+              isLoading
+                ? "bg-slate-400 cursor-not-allowed shadow-none"
+                : "bg-red-600 hover:bg-red-700 active:bg-red-800 shadow-red-600/10 hover:shadow-lg"
+            }`}
           >
-            Login
+            {isLoading ? (
+              <>
+                <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Memproses...
+              </>
+            ) : (
+              "Login"
+            )}
           </button>
         </form>
+
+        <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-center">
+          {supabaseActive ? (
+            <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-100 animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              Supabase Terkoneksi (Auth Aktif)
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 font-medium bg-amber-50 px-3 py-1.5 rounded-full border border-amber-100">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              Demo Mode Aktif (Gunakan kredensial acak)
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

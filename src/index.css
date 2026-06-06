@@ -25,6 +25,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  body {
+    margin: 0;
+    background: white !important;
+  }
   .no-print {
     display: none !important;
   }
@@ -47,9 +55,16 @@ h1, h2, h3, h4, h5, h6 {
     top: 0;
     width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     background: white !important;
     color: black !important;
+  }
+  .print-page {
+    width: 210mm;
+    min-height: auto;
+    height: auto;
+    overflow: visible;
+    page-break-after: auto;
   }
 }
 

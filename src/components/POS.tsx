@@ -745,7 +745,8 @@ export default function POS() {
                       invoice_no: invoiceNumber,
                       deadline: productionDeadline || undefined,
                       dp_amount: 0,
-                      payment_status: "Belum Bayar"
+                      payment_status: "Belum Bayar",
+                      production_notes: productionNotes,
                     };
                     createOrder(newOrder);
                     setCreatedOrder(newOrder);
@@ -1354,8 +1355,8 @@ export default function POS() {
             {/* HEADER */}
             <div className="border-b border-gray-200 p-8 flex justify-between items-center bg-slate-50/20 no-print">
               <div>
-                <h1 className="text-3xl font-black text-slate-800 tracking-tighter">Invoice Order</h1>
-                <p className="text-slate-500 font-medium mt-1">Manufacturing Custom Order Heritage</p>
+                <h1 className="text-3xl font-black text-slate-800 tracking-tighter">Invoice Detail</h1>
+                <p className="text-slate-500 font-medium mt-1">Sistem Dokumen Invoice Heritage</p>
               </div>
               <div className="text-right">
                 <h2 className="font-black text-red-700 text-2xl tracking-tighter">{createdOrder?.invoice_no || invoiceNumber}</h2>
@@ -1367,116 +1368,152 @@ export default function POS() {
               </div>
             </div>
 
-            {/* CONTENT */}
-            <div id="invoice-content" className="p-10 space-y-10 overflow-y-auto">
-              <div className="flex flex-col md:flex-row md:justify-between gap-8 border-b border-gray-200 pb-10">
-                <div className="space-y-4">
+            {/* CONTENT TO PRINT */}
+            <div id="invoice-content" className="p-12 space-y-10 overflow-y-auto print-page">
+              {/* Header Invoice */}
+              <div className="flex flex-col sm:flex-row justify-between items-start border-b-2 border-dashed border-gray-200 pb-8 mb-4">
+                <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                  <img src={bgLogo} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
                   <div>
-                    <h2 className="font-black text-2xl text-slate-800 tracking-tight">{settings.business.companyName}</h2>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">MANUFACTURING & CUSTOM APPAREL</p>
-                  </div>
-                  <div className="text-sm text-slate-500 font-medium leading-relaxed">
-                    <p>{settings.business.address}</p>
-                    <p>{settings.business.companyEmail}</p>
+                    <h1 className="text-2xl font-black text-slate-800 tracking-tighter">BALOENG GEDHE</h1>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-[0.2em] mt-1">Premium Apparel Manufacturing</p>
                   </div>
                 </div>
-                <div className="md:text-right space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Invoice To:</h3>
+                <div className="sm:text-right">
+                  <h2 className="text-xl font-black text-red-700 tracking-tight">INVOICE CUSTOM ORDER</h2>
+                  <p className="text-sm font-extrabold text-slate-600 mt-1">No. {createdOrder?.invoice_no || invoiceNumber}</p>
+                  <p className="text-xs font-bold text-slate-400 mt-1">
+                    Tanggal Invoice: {createdOrder 
+                      ? new Date(createdOrder.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) 
+                      : new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Informasi Order */}
+              <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">INFORMASI ORDER</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   <div>
-                    <p className="font-extrabold text-slate-800 text-lg">{createdOrder?.customer_company || companyName || "-"}</p>
-                    <p className="text-sm text-slate-500 font-medium">{createdOrder?.customer || customerName || "-"}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nomor Invoice</p>
+                    <p className="font-extrabold text-slate-800 mt-1">{createdOrder?.invoice_no || invoiceNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tanggal Invoice</p>
+                    <p className="font-extrabold text-slate-800 mt-1">
+                      {createdOrder 
+                        ? new Date(createdOrder.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) 
+                        : new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Customer</p>
+                    <p className="font-extrabold text-slate-800 mt-1">{createdOrder?.customer || customerName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Perusahaan</p>
+                    <p className="font-extrabold text-slate-800 mt-1">{createdOrder?.customer_company || companyName || "-"}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden border border-gray-200 rounded-3xl shadow-sm">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr className="text-left">
-                      <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Produk</th>
-                      <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty</th>
-                      <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga</th>
-                      <th className="p-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 font-medium">
-                    {cart.map((item) => (
-                      <tr key={item.id}>
-                        <td className="p-5">
-                          <h3 className="font-extrabold text-slate-800 text-sm">{item.name}</h3>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-tight">Custom Specification Applied</p>
-                        </td>
-                        <td className="p-5 text-sm text-slate-600">{item.qty} Pcs</td>
-                        <td className="p-5 text-sm text-slate-600">Rp {item.price.toLocaleString("id-ID")}</td>
-                        <td className="p-5 text-sm font-black text-red-700 text-right">Rp {(item.price * item.qty).toLocaleString("id-ID")}</td>
+              {/* Detail Produk */}
+              <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">DETAIL PRODUK</h3>
+                <div className="overflow-hidden border border-gray-200 rounded-2xl bg-white shadow-sm">
+                  <table className="w-full">
+                    <thead className="bg-slate-50 border-b border-gray-100">
+                      <tr className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th className="p-4 sm:p-5">Produk</th>
+                        <th className="p-4 sm:p-5 text-center">Quantity</th>
+                        <th className="p-4 sm:p-5 text-right">Harga Satuan</th>
+                        <th className="p-4 sm:p-5 text-right">Subtotal</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm font-bold text-slate-700">
+                      {cart.map((item) => {
+                        const itemSubtotal = item.qty * item.price;
+                        return (
+                          <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="p-4 sm:p-5">{item.name}</td>
+                            <td className="p-4 sm:p-5 text-center">{item.qty} Pcs</td>
+                            <td className="p-4 sm:p-5 text-right">Rp {item.price.toLocaleString("id-ID")}</td>
+                            <td className="p-4 sm:p-5 text-right text-red-700">Rp {itemSubtotal.toLocaleString("id-ID")}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between items-center mb-4 opacity-50">
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Catatan Produksi</h3>
-                      <button
-                        onClick={() => setEditNotes(!editNotes)}
-                        className="text-red-700 font-semibold text-sm border border-gray-200 px-3 py-1 rounded-lg hover:bg-slate-50 transition-colors no-print"
-                      >
-                        {editNotes ? "Simpan" : "Edit"}
-                      </button>
-                    </div>
-                    {/* MODE EDIT */}
-                    <div className={editNotes ? "block no-print" : "hidden"}>
-                      <textarea
-                        value={productionNotes}
-                        onChange={(e) => setProductionNotes(e.target.value)}
-                        rows={6}
-                        className="w-full bg-slate-50 border border-gray-200 rounded-2xl p-4 text-sm font-medium text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-100 transition-all resize-none no-print"
-                      />
-                    </div>
-                    <div className="print-only whitespace-pre-line text-sm text-slate-700">
-                      {productionNotes}
-                    </div>
-                    {/* MODE VIEW */}
-                    <div
-                      className={`bg-slate-50 rounded-2xl p-6 text-xs text-slate-600 font-medium leading-loose border border-gray-200 shadow-inner whitespace-pre-line ${
-                        editNotes ? "hidden" : "block"
-                      }`}
-                    >
-                      {productionNotes}
-                    </div>
+              {/* Ringkasan Pembayaran */}
+              <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">RINGKASAN PEMBAYARAN</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Status */}
+                  <div className="flex flex-col justify-center items-center p-6 bg-white rounded-2xl border border-gray-200 shadow-sm col-span-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">STATUS PEMBAYARAN</p>
+                    {(() => {
+                      let displayStatus = "BELUM BAYAR";
+                      let badgeColor = "bg-red-100 text-red-700 border-red-200";
+                      
+                      const dpAmount = paymentAmount || 0;
+                      if (dpAmount >= total) {
+                        displayStatus = "LUNAS";
+                        badgeColor = "bg-green-100 text-green-700 border-green-200";
+                      } else if (dpAmount > 0) {
+                        displayStatus = "DP";
+                        badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
+                      }
+
+                      return (
+                        <span className={`px-4 py-2 rounded-full border text-xs font-black tracking-widest uppercase ${badgeColor}`}>
+                          {displayStatus}
+                        </span>
+                      );
+                    })()}
                   </div>
-                </div>
-                <div className="bg-red-50/50 rounded-3xl p-8 border border-red-100/50 h-fit">
-                   <div className="space-y-4 font-bold">
-                     <div className="flex justify-between text-sm text-slate-500">
-                       <span>Subtotal</span>
-                       <span>Rp {total.toLocaleString("id-ID")}</span>
-                     </div>
-                     <div className="flex justify-between text-sm text-slate-500">
-                       <span>Status Pembayaran</span>
-                       <span className={`px-2 py-0.5 rounded text-[10px] uppercase ${
-                         paymentStatus === "Lunas" ? "bg-green-100 text-green-700" : 
-                         paymentStatus === "DP" ? "bg-amber-100 text-amber-700" : 
-                         paymentStatus === "Cicilan" ? "bg-blue-100 text-blue-700" : 
-                         "bg-red-100 text-red-700"
-                       }`}>{paymentStatus}</span>
-                     </div>
-                     <div className="flex justify-between text-sm text-slate-500">
-                       <span>Pembayaran Masuk</span>
-                       <span>Rp {paymentAmount.toLocaleString("id-ID")}</span>
-                     </div>
-                     <div className="flex justify-between text-sm text-slate-500">
-                       <span>Sisa Pembayaran</span>
-                       <span className="text-red-700">Rp {remainingPayment.toLocaleString("id-ID")}</span>
-                     </div>
-                     <div className="pt-4 border-t border-red-100 flex justify-between text-2xl font-black text-red-700 tracking-tighter">
-                       <span>Total</span>
-                       <span>Rp {total.toLocaleString("id-ID")}</span>
-                     </div>
-                   </div>
+
+                  {/* Calculations */}
+                  <div className="space-y-3 font-bold text-slate-600 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm col-span-1">
+                    {(() => {
+                      const dpAmount = paymentAmount || 0;
+                      const sisaPembayaran = total - dpAmount;
+                      
+                      let displayStatus = "BELUM BAYAR";
+                      if (dpAmount >= total) {
+                        displayStatus = "LUNAS";
+                      } else if (dpAmount > 0) {
+                        displayStatus = "DP";
+                      }
+
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs">
+                            <span>Subtotal</span>
+                            <span className="text-slate-800">Rp {total.toLocaleString("id-ID")}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span>DP Masuk</span>
+                            <span className="text-slate-800">Rp {dpAmount.toLocaleString("id-ID")}</span>
+                          </div>
+                          <div className="flex justify-between text-xs pb-3 border-b">
+                            <span>Sisa Pembayaran</span>
+                            <span className="text-red-700">Rp {sisaPembayaran.toLocaleString("id-ID")}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span>Status Pembayaran</span>
+                            <span className="text-slate-800 font-extrabold uppercase">{displayStatus}</span>
+                          </div>
+                          <div className="flex justify-between text-base font-black text-red-700 pt-1 tracking-tight">
+                            <span>Total Tagihan</span>
+                            <span>Rp {total.toLocaleString("id-ID")}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1501,7 +1538,6 @@ export default function POS() {
               >
                 Print Invoice
               </button>
-
             </div>
           </motion.div>
         </div>
@@ -1894,8 +1930,8 @@ export default function POS() {
               {/* Footer */}
               <div className="grid grid-cols-2 gap-12 pt-12 border-t border-gray-200">
                 <div className="text-left">
-                  <p className="text-xs text-slate-400 uppercase tracking-wider">Dibuat oleh</p>
-                  <p className="font-extrabold text-slate-800 mt-16">Administrator</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">DIBUAT OLEH</p>
+                  <p className="font-black text-slate-800 mt-16">BALOENG GEDHE INDONESIA</p>
                   <div className="w-40 border-b border-gray-300 mt-2"></div>
                 </div>
                 <div className="text-right">

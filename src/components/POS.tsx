@@ -139,6 +139,21 @@ export default function POS() {
     notes: "",
   });
 
+  const [isProductTypeDropdownOpen, setIsProductTypeDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProductTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const updateCustomOrder = (field: string, value: string) => {
     setCustomOrder(prev => ({
       ...prev,
@@ -412,48 +427,63 @@ export default function POS() {
             className="grid gap-4 md:gap-6 w-full max-w-full"
             style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
           >
-            {allProducts.map((p, i) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => addToCart(p)}
-                className="relative bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 min-h-[200px] h-full w-full max-w-full flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-md hover:border-red-200 transition duration-200 cursor-pointer group"
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => {
+                setCustomOrder({
+                  name: "",
+                  type: "",
+                  qty: "",
+                  price: "",
+                  notes: "",
+                });
+                setShowCustomModal(true);
+              }}
+              className="relative bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 min-h-[220px] h-full w-full max-w-full flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-md hover:border-red-200 transition duration-200 cursor-pointer group"
+            >
+              {/* Plus button at the top-right */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCustomOrder({
+                    name: "",
+                    type: "",
+                    qty: "",
+                    price: "",
+                    notes: "",
+                  });
+                  setShowCustomModal(true);
+                }}
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 min-w-11 min-h-11 shrink-0 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-red-700 hover:text-white hover:bg-red-700 hover:border-red-700 text-xl font-bold leading-none transition-all cursor-pointer shadow-sm active:scale-95 z-10"
               >
-                {/* Plus button at the top-right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addToCart(p);
-                  }}
-                  className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 min-w-11 min-h-11 shrink-0 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-red-700 hover:text-white hover:bg-red-700 hover:border-red-700 text-xl font-bold leading-none transition-all cursor-pointer shadow-sm active:scale-95 z-10"
-                >
-                  +
-                </button>
+                +
+              </button>
 
-                <div className="flex-1 flex flex-col justify-between mt-1">
-                  <div>
-                    <span className="inline-block bg-slate-50 border border-gray-200 text-slate-500 px-2.5 py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-widest mb-4">
-                      {p.category}
-                    </span>
+              <div className="flex-1 flex flex-col justify-between mt-1">
+                <div>
+                  <span className="inline-block bg-slate-50 border border-gray-200 text-slate-500 px-2.5 py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-widest mb-4">
+                    Custom Order
+                  </span>
 
-                    <h3 className="text-base sm:text-lg font-bold pr-14 text-slate-800 leading-tight group-hover:text-red-700 transition-colors">
-                      {p.name}
-                    </h3>
-                  </div>
-
-                  <div className="mt-6">
-                    <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest pl-0.5">
-                      Mulai dari
-                    </p>
-                    <p className="text-red-700 font-extrabold text-xl sm:text-2xl mt-1 leading-none">
-                      Rp {p.price.toLocaleString("id-ID")}
-                    </p>
-                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black pr-14 text-slate-800 leading-tight group-hover:text-red-700 transition-colors">
+                    CUSTOM MANUFACTURING
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-2 font-medium">
+                    Order pembuatan garmen custom (Oblong, Berkerah, PDH/PDL, Jaket, Rompi) dengan spesifikasi khusus.
+                  </p>
                 </div>
-              </motion.div>
-            ))}
+
+                <div className="mt-6">
+                  <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest pl-0.5">
+                    Mulai dari
+                  </p>
+                  <p className="text-red-700 font-extrabold text-xl sm:text-2xl mt-1 leading-none">
+                    Rp 70.000 / Pcs
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           </div>
 
           {/* ================= DRAFT ORDER LIST ================= */}
@@ -730,7 +760,7 @@ export default function POS() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-[500px] max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-y-auto border border-gray-100 flex flex-col"
+            className="w-[95%] sm:max-w-[90%] md:max-w-[650px] max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-y-auto border border-gray-100 flex flex-col"
           >
             <div className="p-6 sm:p-8 border-b border-gray-200">
                <span className="inline-block bg-red-50 text-red-700 border border-red-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-2">
@@ -742,12 +772,58 @@ export default function POS() {
             
             <div className="p-6 sm:p-8 space-y-6">
                <div className="space-y-4">
-                  {/* Readonly product type */}
-                  <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Nama Produk</label>
-                     <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 font-extrabold text-sm select-none">
-                       {customOrder.type}
-                     </div>
+                  {/* Selector product type dropdown */}
+                  <div className="space-y-1.5 relative mb-2" ref={dropdownRef}>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Jenis Produk</label>
+                     <button
+                       type="button"
+                       onClick={() => setIsProductTypeDropdownOpen(!isProductTypeDropdownOpen)}
+                       className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3.5 text-sm focus:outline-none flex justify-between items-center text-left hover:border-red-600 transition-colors cursor-pointer min-h-[46px]"
+                     >
+                       <span className={customOrder.type ? "text-slate-800 font-extrabold" : "text-slate-400"}>
+                         {customOrder.type || "Pilih Jenis Produk"}
+                       </span>
+                       <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                     </button>
+                     
+                     {isProductTypeDropdownOpen && (
+                       <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-[110] w-full max-w-full overflow-hidden">
+                         <div className="max-h-48 overflow-y-auto py-1">
+                           {[
+                             "Oblong",
+                             "Berkerah",
+                             "PDH / PDL",
+                             "Jaket",
+                             "Rompi"
+                           ].map((option) => (
+                             <button
+                               key={option}
+                               type="button"
+                               onClick={() => {
+                                 const prices: Record<string, number> = {
+                                   "Oblong": 70000,
+                                   "Berkerah": 85000,
+                                   "PDH / PDL": 120000,
+                                   "Jaket": 150000,
+                                   "Rompi": 95000
+                                 };
+                                 updateCustomOrder("type", option);
+                                 updateCustomOrder("name", option);
+                                 if (!customOrder.price) {
+                                   updateCustomOrder("price", String(prices[option] || 70000));
+                                 }
+                                 setIsProductTypeDropdownOpen(false);
+                               }}
+                               className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${
+                                 customOrder.type === option ? "text-red-700 font-bold bg-red-50/50" : "text-slate-700 font-medium"
+                               }`}
+                             >
+                               {option}
+                             </button>
+                           ))}
+                         </div>
+                       </div>
+                     )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

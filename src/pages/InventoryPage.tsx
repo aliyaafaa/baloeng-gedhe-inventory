@@ -1,6 +1,81 @@
 import { useState } from "react"
 import { useApp, MaterialDraftItem } from "../context/AppContext"
 
+const FABRIC_OPTIONS = [
+  "Cotton Combed 20s",
+  "Cotton Combed 24s",
+  "Cotton Combed 30s",
+  "Cotton Carded 20s",
+  "Cotton Carded 24s",
+  "Cotton Carded 30s",
+  "Lacoste CVC",
+  "Lacoste PE",
+  "Lacoste Cotton",
+  "Drill",
+  "American Drill",
+  "Japan Drill",
+  "Ripstop",
+  "Twill",
+  "Canvas",
+  "Taslan",
+  "Fleece",
+  "Baby Terry",
+  "Parasut",
+  "Oxford",
+  "Denim",
+  "Polyester",
+  "Hyget",
+  "Mesh",
+  "Satin",
+  "Katun Jepang"
+]
+
+const MAIN_MATERIAL_GROUPS = {
+  "Bordir": [
+    "Benang Bordir Rayon",
+    "Benang Bordir Polyester"
+  ],
+  "Sablon": [
+    "Plastisol",
+    "Rubber",
+    "DTF",
+    "Polyflex",
+    "Sublim"
+  ],
+  "Jahit": [
+    "Benang Jahit",
+    "Resleting",
+    "Kancing",
+    "Velcro",
+    "Karet Pinggang"
+  ],
+  "Aksesoris": [
+    "Label Brand",
+    "Hangtag",
+    "Polybag",
+    "Packaging Box"
+  ]
+}
+
+const ALL_MAIN_MATERIALS = [
+  "Benang Bordir Rayon",
+  "Benang Bordir Polyester",
+  "Plastisol",
+  "Rubber",
+  "DTF",
+  "Polyflex",
+  "Sublim",
+  "Benang Jahit",
+  "Resleting",
+  "Kancing",
+  "Velcro",
+  "Karet Pinggang",
+  "Label Brand",
+  "Hangtag",
+  "Polybag",
+  "Packaging Box"
+]
+
 export default function InventoryPage() {
   const {
     materialDrafts,
@@ -14,6 +89,8 @@ export default function InventoryPage() {
 
   const [searchDraft, setSearchDraft] = useState("")
   const [statusFilter, setStatusFilter] = useState("Semua")
+  const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
+  const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
 
   const getProgress = (item: MaterialDraftItem) => {
     const need = Number(item.volumeNeed || 0)
@@ -30,12 +107,57 @@ export default function InventoryPage() {
       draft.product.toLowerCase().includes(searchDraft.toLowerCase()) ||
       draft.customer.toLowerCase().includes(searchDraft.toLowerCase())
     
-    const matchesStatus =
-      statusFilter === "Semua" ||
-      draft.status.toLowerCase() === statusFilter.toLowerCase()
+    let matchesStatus = false
+    const draftStatus = draft.status.toLowerCase()
+    const filterValue = statusFilter.toLowerCase()
+
+    const isCompleted = draftStatus === "completed" || draftStatus === "selesai";
+    const isOnProduction = draftStatus === "on production" || draftStatus === "sedang produksi" || draftStatus === "produksi";
+    const isDraftMaterial = draftStatus === "draft material" || draftStatus === "draft" || draftStatus === "open";
+
+    if (statusFilter === "Semua") {
+      matchesStatus = true
+    } else if (filterValue === "draft material") {
+      matchesStatus = isDraftMaterial
+    } else if (filterValue === "on production") {
+      matchesStatus = isOnProduction
+    } else if (filterValue === "completed") {
+      matchesStatus = isCompleted
+    }
 
     return matchesSearch && matchesStatus
   })
+
+  // Smooth scroll and load related order material data
+  const handleStockCardClick = (stock: any) => {
+    setSelectedStockId(stock.id)
+
+    const matchingDraft = materialDrafts.find((draft) => {
+      const stockSource = String(stock.sourceOrder || "").toLowerCase()
+      const draftProd = String(draft.product || "").toLowerCase()
+      const draftCust = String(draft.customer || "").toLowerCase()
+      
+      return (
+        draftProd === stockSource ||
+        draftProd.includes(stockSource) ||
+        stockSource.includes(draftProd) ||
+        draftCust.includes(stockSource) ||
+        String(draft.orderId) === stockSource ||
+        stockSource.includes(String(draft.orderId))
+      )
+    })
+
+    if (matchingDraft) {
+      setTimeout(() => {
+        document
+          .getElementById(`draft-${matchingDraft.id}`)
+          ?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          })
+      }, 100)
+    }
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -71,11 +193,12 @@ export default function InventoryPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
+            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm cursor-pointer"
           >
-            <option value="Semua">Semua Status</option>
+            <option value="Semua">Semua Order</option>
             <option value="Draft Material">Draft Material</option>
-            <option value="Selesai">Selesai</option>
+            <option value="On Production">On Production</option>
+            <option value="Completed">Completed</option>
           </select>
         </div>
 
@@ -95,28 +218,46 @@ export default function InventoryPage() {
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {warehouseStock.map((stock) => (
-              <div
-                key={stock.id}
-                className="bg-slate-50 border border-slate-100 rounded-3xl p-5"
-              >
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {stock.category}
-                </p>
+            {warehouseStock.map((stock) => {
+              const isSelected = selectedStockId === stock.id
+              return (
+                <div
+                  key={stock.id}
+                  onClick={() => handleStockCardClick(stock)}
+                  className={`rounded-3xl p-5 transition-all cursor-pointer ${
+                    isSelected
+                      ? "border-2 border-[#dc2626] shadow-[0_0_10px_rgba(220,38,38,0.2)] bg-red-50/20"
+                      : "bg-slate-50 border border-slate-100 hover:border-red-300"
+                  }`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {stock.category}
+                  </p>
 
-                <h3 className="font-bold text-xl mt-2 text-slate-800">
-                  {stock.materialName}
-                </h3>
+                  <h3 className="font-bold text-xl mt-2 text-slate-800">
+                    {stock.materialName}
+                  </h3>
 
-                <p className="text-red-700 font-bold text-lg mt-3">
-                  {stock.stockLeft} {stock.unit}
-                </p>
+                  <p className="text-red-700 font-bold text-lg mt-3">
+                    {stock.stockLeft} {stock.unit}
+                  </p>
 
-                <p className="text-xs text-slate-400 mt-2">
-                  Dari order: {stock.sourceOrder}
-                </p>
-              </div>
-            ))}
+                  <p className="text-xs text-slate-400 mt-2">
+                    Dari order: {stock.sourceOrder}
+                  </p>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleStockCardClick(stock)
+                    }}
+                    className="mt-4 w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    Kelola Material
+                  </button>
+                </div>
+              )
+            })}
           </div>
         )}
 
@@ -173,114 +314,248 @@ export default function InventoryPage() {
             </p>
           </div>
         ) : (
-          filteredDrafts.map((draft) => (
-            <div
-              id={`draft-${draft.id}`}
-              key={draft.id}
-              className="bg-white rounded-[32px] border border-gray-200 p-6 sm:p-8 shadow-sm scroll-mt-6"
-            >
+          filteredDrafts.map((draft) => {
+            const isHighlightedDraft = selectedStockId
+              ? (() => {
+                  const stockItem = warehouseStock.find((s) => s.id === selectedStockId)
+                  if (!stockItem) return false
+                  const stockSource = String(stockItem.sourceOrder || "").toLowerCase()
+                  const draftProd = String(draft.product || "").toLowerCase()
+                  const draftCust = String(draft.customer || "").toLowerCase()
 
-              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
+                  return (
+                    draftProd === stockSource ||
+                    draftProd.includes(stockSource) ||
+                    stockSource.includes(draftProd) ||
+                    draftCust.includes(stockSource) ||
+                    String(draft.orderId) === stockSource
+                  )
+                })()
+              : false
 
-                <div>
+            return (
+              <div
+                id={`draft-${draft.id}`}
+                key={draft.id}
+                className={`bg-white rounded-[32px] p-6 sm:p-8 shadow-sm scroll-mt-6 transition-all duration-300 ${
+                  isHighlightedDraft
+                    ? "border-2 border-[#dc2626] shadow-[0_0_15px_rgba(220,38,38,0.15)] ring-2 ring-red-100 bg-red-50/5"
+                    : "border border-gray-200"
+                }`}
+              >
 
-                  <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
-                    Pembelanjaan Material
-                  </p>
+                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
 
-                  <h2 className="text-3xl font-black mt-2 text-slate-800">
-                    {draft.product}
-                  </h2>
+                  <div>
 
-                  <p className="text-gray-500 font-medium mt-1">
-                    Customer: {draft.customer}
-                  </p>
+                    <p className="text-[10px] uppercase tracking-widest font-black text-gray-400">
+                      Pembelanjaan Material
+                    </p>
+
+                    <h2 className="text-3xl font-black mt-2 text-slate-800">
+                      {draft.product}
+                    </h2>
+
+                    <p className="text-gray-500 font-medium mt-1">
+                      Customer: {draft.customer}
+                    </p>
+
+                  </div>
+
+                  <span className="px-5 py-2.5 rounded-full bg-yellow-100 text-yellow-700 font-bold text-xs tracking-wider uppercase w-fit">
+                    {draft.status}
+                  </span>
 
                 </div>
 
-                <span className="px-5 py-2.5 rounded-full bg-yellow-100 text-yellow-700 font-bold text-xs tracking-wider uppercase w-fit">
-                  {draft.status}
-                </span>
+                <div className="overflow-x-auto">
 
-              </div>
+                  <table className="w-full min-w-[1300px]">
 
-              <div className="overflow-x-auto">
+                    <thead>
+                      <tr className="text-left text-xs uppercase tracking-widest font-black text-gray-400 border-b border-gray-200">
+                        <th className="py-4">Kategori</th>
+                        <th>Material</th>
+                        <th>Detail Material</th>
+                        <th>Kebutuhan Total</th>
+                        <th>Volume Belanja</th>
+                        <th>Harga Satuan</th>
+                        <th>Total Belanja</th>
+                        <th>Progress</th>
+                        <th>Volume Penggunaan</th>
+                        <th>Sisa</th>
+                      </tr>
+                    </thead>
 
-                <table className="w-full min-w-[1300px]">
+                    <tbody>
+                      {draft.items.map((item) => {
+                        const progress = getProgress(item)
+                        const bought = Number(item.volumeBought || 0)
+                        const used = Number(item.volumeUsed || 0)
+                        const stockLeft = bought - used
 
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-widest font-black text-gray-400 border-b border-gray-200">
-                      <th className="py-4">Kategori</th>
-                      <th>Material</th>
-                      <th>Detail Material</th>
-                      <th>Kebutuhan Total</th>
-                      <th>Volume Belanja</th>
-                      <th>Harga Satuan</th>
-                      <th>Total Belanja</th>
-                      <th>Progress</th>
-                      <th>Volume Penggunaan</th>
-                      <th>Sisa</th>
-                    </tr>
-                  </thead>
+                        return (
+                          <tr
+                            key={item.id}
+                            className="border-b border-gray-100"
+                          >
 
-                  <tbody>
-                    {draft.items.map((item) => {
-                      const progress = getProgress(item)
-                      const bought = Number(item.volumeBought || 0)
-                      const used = Number(item.volumeUsed || 0)
-                      const stockLeft = bought - used
+                            <td className="py-6 font-bold text-slate-700 text-lg">
+                              {item.category}
+                            </td>
 
-                      return (
-                        <tr
-                          key={item.id}
-                          className="border-b border-gray-100"
-                        >
-
-                          <td className="py-6 font-bold text-slate-700 text-lg">
-                            {item.category}
-                          </td>
-
-                          <td>
-                            {item.category === "Lain-lain" ? (
-                              <input
-                                type="text"
-                                value={item.materialName}
-                                onChange={(e) =>
-                                  updateMaterialItem(
-                                    draft.id,
-                                    item.id,
-                                    "materialName",
-                                    e.target.value
+                            <td>
+                              {item.category === "Lain-lain" ? (
+                                <input
+                                  type="text"
+                                  value={item.materialName}
+                                  onChange={(e) =>
+                                    updateMaterialItem(
+                                      draft.id,
+                                      item.id,
+                                      "materialName",
+                                      e.target.value
+                                    )
+                                  }
+                                  placeholder="Tulis material lain-lain"
+                                  className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                                />
+                              ) : item.category === "Kain" ? (
+                                (() => {
+                                  const isManualFabric = manualRows[item.id] || (item.materialName && !FABRIC_OPTIONS.includes(item.materialName))
+                                  if (isManualFabric) {
+                                    return (
+                                      <div className="flex gap-2 items-center min-w-[200px]">
+                                        <input
+                                          type="text"
+                                          value={item.materialName}
+                                          onChange={(e) =>
+                                            updateMaterialItem(
+                                              draft.id,
+                                              item.id,
+                                              "materialName",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="Tulis jenis kain..."
+                                          className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            setManualRows(prev => ({ ...prev, [item.id]: false }))
+                                            updateMaterialItem(draft.id, item.id, "materialName", "")
+                                          }}
+                                          className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
+                                        >
+                                          Pilih Daftar
+                                        </button>
+                                      </div>
+                                    )
+                                  }
+                                  return (
+                                    <select
+                                      value={item.materialName}
+                                      onChange={(e) => {
+                                        if (e.target.value === "__custom__") {
+                                          setManualRows(prev => ({ ...prev, [item.id]: true }))
+                                          updateMaterialItem(draft.id, item.id, "materialName", "")
+                                        } else {
+                                          updateMaterialItem(draft.id, item.id, "materialName", e.target.value)
+                                        }
+                                      }}
+                                      className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                                    >
+                                      <option value="">Pilih Jenis Kain</option>
+                                      {FABRIC_OPTIONS.map((material) => (
+                                        <option key={material} value={material}>
+                                          {material}
+                                        </option>
+                                      ))}
+                                      <option value="__custom__">- Input Manual / Kain Lainnya -</option>
+                                    </select>
                                   )
-                                }
-                                placeholder="Tulis material lain-lain"
-                                className="w-full border border-gray-200 rounded-xl p-3"
-                              />
-                            ) : (
-                              <select
-                                value={item.materialName}
-                                onChange={(e) =>
-                                  updateMaterialItem(
-                                    draft.id,
-                                    item.id,
-                                    "materialName",
-                                    e.target.value
+                                })()
+                              ) : item.category === "Material Utama" ? (
+                                (() => {
+                                  const isManualMain = manualRows[item.id] || (item.materialName && !ALL_MAIN_MATERIALS.includes(item.materialName))
+                                  if (isManualMain) {
+                                    return (
+                                      <div className="flex gap-2 items-center min-w-[200px]">
+                                        <input
+                                          type="text"
+                                          value={item.materialName}
+                                          onChange={(e) =>
+                                            updateMaterialItem(
+                                              draft.id,
+                                              item.id,
+                                              "materialName",
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="Tulis material utama..."
+                                          className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            setManualRows(prev => ({ ...prev, [item.id]: false }))
+                                            updateMaterialItem(draft.id, item.id, "materialName", "")
+                                          }}
+                                          className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
+                                        >
+                                          Pilih Daftar
+                                        </button>
+                                      </div>
+                                    )
+                                  }
+                                  return (
+                                    <select
+                                      value={item.materialName}
+                                      onChange={(e) => {
+                                        if (e.target.value === "__custom__") {
+                                          setManualRows(prev => ({ ...prev, [item.id]: true }))
+                                          updateMaterialItem(draft.id, item.id, "materialName", "")
+                                        } else {
+                                          updateMaterialItem(draft.id, item.id, "materialName", e.target.value)
+                                        }
+                                      }}
+                                      className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                                    >
+                                      <option value="">Pilih Material Utama</option>
+                                      {Object.entries(MAIN_MATERIAL_GROUPS).map(([group, options]) => (
+                                        <optgroup key={group} label={group}>
+                                          {options.map((material) => (
+                                            <option key={material} value={material}>
+                                              {material}
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      ))}
+                                      <option value="__custom__">- Input Manual / Material Baru -</option>
+                                    </select>
                                   )
-                                }
-                                className="w-full border border-gray-200 rounded-xl p-3"
-                              >
-                                <option value="">
-                                  Pilih material
-                                </option>
-
-                                {settings.material.fabrics.map((material) => (
-                                  <option key={material} value={material}>
-                                    {material}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
-                          </td>
+                                })()
+                              ) : (
+                                <select
+                                  value={item.materialName}
+                                  onChange={(e) =>
+                                    updateMaterialItem(
+                                      draft.id,
+                                      item.id,
+                                      "materialName",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                                >
+                                  <option value="">Pilih material</option>
+                                  {settings.material.fabrics.map((material: string) => (
+                                    <option key={material} value={material}>
+                                      {material}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </td>
 
                           <td>
                             <input
@@ -438,7 +713,8 @@ export default function InventoryPage() {
               </div>
 
             </div>
-          ))
+          )
+        })
         )}
 
       </div>

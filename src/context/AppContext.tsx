@@ -98,7 +98,8 @@ interface AppContextType {
   warehouseStock: WarehouseStockItem[];
   setWarehouseStock: React.Dispatch<React.SetStateAction<WarehouseStockItem[]>>;
   updateMaterialItem: (draftId: number, itemId: number, field: keyof MaterialDraftItem, value: any) => void;
-  saveMaterialUsageToStock: (draftId: number) => void;
+  saveMaterialUsageToStock: (draftId: number) => Promise<void>;
+  saveMaterialDraftDetail: (draftId: number) => Promise<void>;
   expenseRecords: ExpenseRecord[];
   addMaterialExpense: (expense: {
     category: string;
@@ -217,8 +218,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           .select("*")
           .order("id", { ascending: false });
 
+        let parsedStock = [];
         if (!inventoryErr && inventoryData) {
-          const parsedStock = inventoryData.map((item: any) => ({
+          parsedStock = inventoryData.map((item: any) => ({
             id: item.id,
             materialName: item.material_name || item.materialName || "-",
             category: item.category || "-",
@@ -227,14 +229,113 @@ export function AppProvider({ children }: { children: ReactNode }) {
             supplier: item.supplier || "-",
             sourceOrder: item.source_order || item.sourceOrder || "-"
           }));
-          setWarehouseStock(parsedStock);
+        }
+
+        const localStock = JSON.parse(localStorage.getItem("local_warehouse_stock") || "[]");
+        if (parsedStock.length === 0 && localStock.length > 0) {
+          setWarehouseStock(localStock);
         } else {
-          setWarehouseStock([]);
+          setWarehouseStock(parsedStock);
         }
       } catch (invErr) {
         console.error("Failed to load inventory materials:", invErr);
-        setWarehouseStock([]);
+        const localStock = JSON.parse(localStorage.getItem("local_warehouse_stock") || "[]");
+        setWarehouseStock(localStock);
       }
+
+      // Load material drafts for ALL orders
+      let supabaseDraftItems: any[] = [];
+      if (isSupabaseConfigured()) {
+        try {
+          const { data, error } = await supabase
+            .from("order_materials")
+            .select("*");
+          if (!error && data) {
+            supabaseDraftItems = data;
+          }
+        } catch (dbErr) {
+          console.error("Failed to load order_materials from Supabase:", dbErr);
+        }
+      }
+
+      const localDrafts = JSON.parse(localStorage.getItem("local_material_drafts") || "[]");
+
+      const loadedDrafts = parsedOrders.map((order) => {
+        const dbItems = supabaseDraftItems.filter((item: any) => Number(item.order_id) === Number(order.id));
+        const matchedLocalDraft = localDrafts.find((d: any) => Number(d.orderId) === Number(order.id));
+
+        let itemsToUse = [];
+
+        if (dbItems.length > 0) {
+          itemsToUse = dbItems.map((item: any) => ({
+            id: item.id || Date.now() + Math.random(),
+            category: item.material_category || "Lain-lain",
+            materialName: item.material_name || "",
+            materialDetail: item.material_detail || "",
+            volumeNeed: item.required_qty !== undefined && item.required_qty !== null ? String(item.required_qty) : "",
+            volumeBought: item.purchased_qty !== undefined && item.purchased_qty !== null ? String(item.purchased_qty) : "",
+            volumeUsed: item.used_qty !== undefined && item.used_qty !== null ? String(item.used_qty) : "",
+            unit: item.unit || "pcs",
+            price: item.unit_price !== undefined && item.unit_price !== null ? String(item.unit_price) : "",
+          }));
+        } else if (matchedLocalDraft && matchedLocalDraft.items) {
+          itemsToUse = matchedLocalDraft.items;
+        } else {
+          itemsToUse = [
+            {
+              id: 1,
+              category: "Kain",
+              materialName: "",
+              materialDetail: "",
+              volumeNeed: "",
+              volumeBought: "",
+              volumeUsed: "",
+              unit: "kg",
+              price: "",
+            },
+            {
+              id: 2,
+              category: "Material Utama",
+              materialName: "",
+              materialDetail: "",
+              volumeNeed: "",
+              volumeBought: "",
+              volumeUsed: "",
+              unit: "pcs",
+              price: "",
+            },
+            {
+              id: 3,
+              category: "Lain-lain",
+              materialName: "",
+              materialDetail: "",
+              volumeNeed: "",
+              volumeBought: "",
+              volumeUsed: "",
+              unit: "pcs",
+              price: "",
+            }
+          ];
+        }
+
+        let draftStatus = "Draft Material";
+        if (order.status === "Selesai" || order.status === "Completed" || order.status === "COMPLETED") {
+          draftStatus = "Completed";
+        } else if (order.status === "On Production" || order.status === "Sedang Produksi") {
+          draftStatus = "On Production";
+        }
+
+        return {
+          id: matchedLocalDraft?.id || (Date.now() + order.id),
+          orderId: order.id,
+          customer: order.customer,
+          product: order.product,
+          status: draftStatus,
+          items: itemsToUse
+        };
+      });
+
+      setMaterialDrafts(loadedDrafts);
 
       // 4. Clear/empty financial transactions state as per instructions (not using financial_transactions table)
       setExpenseRecords([]);
@@ -433,7 +534,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   };
 
-  const saveMaterialUsageToStock = (draftId: number) => {
+  const saveMaterialDraftDetail = async (draftId: number) => {
+    const draft = materialDrafts.find((item) => item.id === draftId);
+    if (!draft) return;
+
+    // Save to local storage
+    const savedDrafts = JSON.parse(localStorage.getItem("local_material_drafts") || "[]");
+    const index = savedDrafts.findIndex((d: any) => Number(d.orderId) === Number(draft.orderId));
+    if (index >= 0) {
+      savedDrafts[index] = draft;
+    } else {
+      savedDrafts.push(draft);
+    }
+    localStorage.setItem("local_material_drafts", JSON.stringify(savedDrafts));
+
+    // Save to Supabase using 'order_materials' table
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase
+          .from("order_materials")
+          .delete()
+          .eq("order_id", draft.orderId);
+
+        const rowsToInsert = draft.items.map((item) => ({
+          order_id: draft.orderId,
+          material_name: item.materialName || "-",
+          material_category: item.category || "-",
+          material_detail: item.materialDetail || "",
+          required_qty: Number(item.volumeNeed || 0),
+          purchased_qty: Number(item.volumeBought || 0),
+          used_qty: Number(item.volumeUsed || 0),
+          remaining_qty: Math.max(0, Number(item.volumeBought || 0) - Number(item.volumeUsed || 0)),
+          unit_price: Number(item.price || 0),
+          total_cost: Number(item.volumeBought || 0) * Number(item.price || 0),
+          unit: item.unit || "pcs"
+        }));
+
+        const { error } = await supabase
+          .from("order_materials")
+          .insert(rowsToInsert);
+
+        if (error) {
+          console.error("Supabase order_materials insert error:", error);
+        } else {
+          console.log("Successfully saved order_materials to Supabase for order", draft.orderId);
+        }
+      } catch (err) {
+        console.error("Supabase order_materials error:", err);
+      }
+    }
+  };
+
+  const saveMaterialUsageToStock = async (draftId: number) => {
     const draft = materialDrafts.find((item) => item.id === draftId);
 
     if (!draft) return;
@@ -445,7 +597,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const used = Number(item.volumeUsed || 0);
 
         return {
-          id: Date.now() + item.id,
+          id: Date.now() + item.id + Math.floor(Math.random() * 1000),
           materialName: item.materialName,
           category: item.category,
           stockLeft: bought - used,
@@ -455,9 +607,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       .filter((item) => item.stockLeft > 0);
 
-    setWarehouseStock((prev) => [...prev, ...stockLeft]);
+    setWarehouseStock((prev) => {
+      const filtered = prev.filter(s => s.sourceOrder !== draft.product);
+      return [...filtered, ...stockLeft];
+    });
 
-    alert("Sisa material berhasil masuk ke stok gudang");
+    const savedStocks = JSON.parse(localStorage.getItem("local_warehouse_stock") || "[]");
+    const filteredLocal = savedStocks.filter((s: any) => s.sourceOrder !== draft.product);
+    localStorage.setItem("local_warehouse_stock", JSON.stringify([...filteredLocal, ...stockLeft]));
+
+    await saveMaterialDraftDetail(draftId);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase
+          .from("inventory_materials")
+          .delete()
+          .eq("source_order", draft.product);
+
+        if (stockLeft.length > 0) {
+          const rowsToInsert = stockLeft.map(s => ({
+            material_name: s.materialName,
+            category: s.category,
+            stock_qty: s.stockLeft,
+            unit: s.unit,
+            source_order: s.sourceOrder,
+            supplier: "-"
+          }));
+
+          const { error } = await supabase
+            .from("inventory_materials")
+            .insert(rowsToInsert);
+
+          if (error) {
+            console.error("Supabase inventory_materials insert error:", error);
+          }
+        }
+      } catch (err) {
+        console.error("Supabase save inventory materials error:", err);
+      }
+    }
+
+    alert("Belanja, penggunaan, dan sisa stok material berhasil tersimpan ke database & gudang");
   };
 
   /* ================= CREATE ORDER ================= */
@@ -612,6 +803,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setWarehouseStock,
         updateMaterialItem,
         saveMaterialUsageToStock,
+        saveMaterialDraftDetail,
         expenseRecords,
         addMaterialExpense,
         updateExpenseRecord,

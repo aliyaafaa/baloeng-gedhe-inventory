@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp } from "../context/AppContext";
+import { supabase, isSupabaseConfigured } from "../lib/supabase";
+import bgLogo from "../assets/images/bg_logo_1779866363731.png";
 
 export default function POS() {
   // Helper components for dashboards
@@ -179,11 +181,43 @@ export default function POS() {
   ).padStart(4, "0")}`;
 
   const [showProductionTracking, setShowProductionTracking] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [showPaymentStatus, setShowPaymentStatus] = useState(false);
   const closePaymentModal = () => setShowPaymentStatus(false);
-  const savePaymentStatus = () => setShowPaymentStatus(false);
-  const [paymentStatus, setPaymentStatus] = useState(settings.invoice.paymentDefault);
-  const [paymentAmount, setPaymentAmount] = useState(50000000);
+  const savePaymentStatus = async () => {
+    setShowPaymentStatus(false);
+    const targetInvoiceNo = createdOrder?.invoice_no || invoiceNumber;
+    
+    if (createdOrder) {
+      setCreatedOrder((prev: any) => ({
+        ...prev,
+        dp_amount: paymentAmount,
+        payment_status: paymentStatus,
+      }));
+    }
+
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            dp_amount: paymentAmount,
+            payment_status: paymentStatus,
+          })
+          .eq("invoice_no", targetInvoiceNo);
+
+        if (error) {
+          console.error("Error updating order payment in Supabase:", error);
+        } else {
+          console.log("Successfully updated payment status in Supabase!");
+        }
+      } catch (err) {
+        console.error("Failed to run Supabase update query:", err);
+      }
+    }
+  };
+  const [paymentStatus, setPaymentStatus] = useState("Belum Bayar");
+  const [paymentAmount, setPaymentAmount] = useState(0);
   const [orderStatus, setOrderStatus] = useState("OPEN");
   const [draftOrders, setDraftOrders] = useState<any[]>([]);
   const [editNotes, setEditNotes] = useState(false);
@@ -229,39 +263,7 @@ export default function POS() {
   };
 
   const printInvoice = () => {
-    const printContents = document.getElementById("invoice-content")?.innerHTML;
-    const win = window.open("", "", "height=900,width=900");
-    if (win) {
-      win.document.write(`
-        <html>
-          <head>
-            <title>Invoice - Baloeng Gedhe</title>
-            <style>
-              body { font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; }
-              table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-              th, td { padding: 12px; border: 1px solid #e2e8f0; text-align: left; }
-              th { background: #f8fafc; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
-              h1 { color: #b91c1c; margin: 0; }
-              .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; }
-              .footer { margin-top: 40px; border-top: 1px solid #e5e7eb; pt: 20px; font-size: 12px; color: #64748b; }
-              .total-box { background: #fef2f2; padding: 20px; border-radius: 12px; margin-top: 20px; font-weight: bold; color: #b91c1c; text-align: right; }
-              .print-only { display: none; }
-              @media print {
-                .no-print { display: none !important; }
-                .print-only { display: block !important; }
-                body { background: white !important; }
-                button { display: none !important; }
-              }
-            </style>
-          </head>
-          <body>
-            ${printContents}
-          </body>
-        </html>
-      `);
-      win.document.close();
-      win.print();
-    }
+    window.print();
   };
 
   const addToCart = (product: { id: number; name: string; price: number }) => {
@@ -399,40 +401,7 @@ export default function POS() {
   };
 
   const printSuratKerja = () => {
-    const printContents = document.getElementById("surat-kerja-content")?.innerHTML;
-    const win = window.open("", "", "width=900,height=900");
-    if (win) {
-      win.document.write(`
-        <html>
-          <head>
-            <title>Surat Kerja</title>
-            <style>
-              body{
-                font-family: Arial;
-                padding:40px;
-              }
-              .no-print{
-                display:none !important;
-              }
-              textarea{
-                display:none !important;
-              }
-              button{
-                display:none !important;
-              }
-              .print-title{
-                display:block !important;
-              }
-            </style>
-          </head>
-          <body>
-            ${printContents}
-          </body>
-        </html>
-      `)
-      win.document.close();
-      win.print();
-    }
+    window.print();
   };
 
   const total = cart.reduce((sum, item) => item.canceled ? sum : sum + Number(item.subtotal || item.price * item.qty || 0), 0);
@@ -775,8 +744,13 @@ export default function POS() {
                       createdAt: new Date().toISOString().split("T")[0],
                       invoice_no: invoiceNumber,
                       deadline: productionDeadline || undefined,
+                      dp_amount: 0,
+                      payment_status: "Belum Bayar"
                     };
                     createOrder(newOrder);
+                    setCreatedOrder(newOrder);
+                    setPaymentStatus("Belum Bayar");
+                    setPaymentAmount(0);
                     setShowNextStep(true);
                   }}
                   className="w-full bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-100 flex items-center justify-center gap-3 hover:bg-red-800 transition-all hover:translate-y-[-2px] active:translate-y-[0px] disabled:opacity-50 disabled:grayscale disabled:pointer-events-none" 
@@ -1101,12 +1075,7 @@ export default function POS() {
                   </button>
                   <button
                     onClick={() => {
-                      setShowNextStep(false);
-                      setShowProductionTracking(true);
-                      setCustomerName("");
-                      setCompanyName("");
-                      setProductionDeadline("");
-                      setCart([]);
+                      setShowSuratKerja(true);
                     }}
                     className="
                       w-full
@@ -1122,7 +1091,7 @@ export default function POS() {
                       transition
                     "
                   >
-                    Pantau Produksi
+                    Print Surat Kerja
                   </button>
                   <button
                     onClick={() => {
@@ -1389,8 +1358,12 @@ export default function POS() {
                 <p className="text-slate-500 font-medium mt-1">Manufacturing Custom Order Heritage</p>
               </div>
               <div className="text-right">
-                <h2 className="font-black text-red-700 text-2xl tracking-tighter">{invoiceNumber}</h2>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">09 Mei 2026</p>
+                <h2 className="font-black text-red-700 text-2xl tracking-tighter">{createdOrder?.invoice_no || invoiceNumber}</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                  {createdOrder 
+                    ? new Date(createdOrder.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) 
+                    : new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
               </div>
             </div>
 
@@ -1410,8 +1383,8 @@ export default function POS() {
                 <div className="md:text-right space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Invoice To:</h3>
                   <div>
-                    <p className="font-extrabold text-slate-800 text-lg">{companyName || "PT Patra Niaga"}</p>
-                    <p className="text-sm text-slate-500 font-medium">{customerName || "Divisi Operasional"}</p>
+                    <p className="font-extrabold text-slate-800 text-lg">{createdOrder?.customer_company || companyName || "-"}</p>
+                    <p className="text-sm text-slate-500 font-medium">{createdOrder?.customer || customerName || "-"}</p>
                   </div>
                 </div>
               </div>
@@ -1819,7 +1792,7 @@ export default function POS() {
             className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-200 flex flex-col max-h-[90vh]"
           >
             {/* HEADER */}
-            <div className="border-b border-gray-200 p-8 flex justify-between items-center bg-slate-50/20 no-print">
+            <div className="border-b border-gray-200 p-8 flex justify-between items-center bg-slate-50/20 no-print overflow-hidden shrink-0">
               <div>
                 <h1 className="text-3xl font-black text-slate-800 tracking-tighter">Surat Kerja Produksi</h1>
                 <p className="text-slate-500 font-medium mt-1">Manufacturing Production Sheet Heritage</p>
@@ -1833,81 +1806,102 @@ export default function POS() {
             </div>
 
             {/* CONTENT */}
-            <div id="surat-kerja-content" className="p-10 space-y-10 overflow-y-auto">
-              <div className="flex justify-between items-start border-b-2 border-gray-200 pb-10 mb-10">
-                <div className="header">
-                   <h1 className="text-4xl font-black text-slate-800 tracking-tighter">SURAT KERJA</h1>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Baloeng Gedhe Manufacturing</p>
+            <div id="surat-kerja-content" className="p-12 space-y-10 overflow-y-auto">
+              {/* Header surat */}
+              <div className="flex flex-col sm:flex-row justify-between items-start border-b-2 border-dashed border-gray-200 pb-8 mb-4">
+                <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                  <img src={bgLogo} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
+                  <div>
+                    <h1 className="text-2xl font-black text-slate-800 tracking-tighter">BALOENG GEDHE</h1>
+                    <p className="text-xs text-slate-400 font-semibold uppercase tracking-[0.2em] mt-1">Premium Apparel Manufacturing</p>
+                  </div>
+                </div>
+                <div className="sm:text-right">
+                  <h2 className="text-xl font-black text-red-700 tracking-tight">SURAT KERJA PRODUKSI</h2>
+                  <p className="text-sm font-extrabold text-slate-600 mt-1">No. {createdOrder?.invoice_no || invoiceNumber}</p>
+                  <p className="text-xs font-bold text-slate-400 mt-1">
+                    Tanggal Cetak: {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Informasi Order */}
+              <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">INFORMASI ORDER</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Customer</p>
+                    <p className="font-extrabold text-slate-800 mt-1">{createdOrder?.customer || customerName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Perusahaan</p>
+                    <p className="font-extrabold text-slate-800 mt-1">{createdOrder?.customer_company || companyName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Produk</p>
+                    <p className="font-extrabold text-slate-800 mt-1">
+                      {createdOrder?.product || (cart.length > 1 ? `${cart[0].name} +${cart.length - 1}` : cart[0]?.name || "Custom Order")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quantity</p>
+                    <p className="font-extrabold text-slate-800 mt-1">
+                      {createdOrder ? (createdOrder.qty || 1) : cart.reduce((acc, item) => acc + item.qty, 0)} Pcs
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deadline Produksi</p>
+                    <p className="font-extrabold text-red-700 mt-1">
+                      {createdOrder?.deadline 
+                        ? new Date(createdOrder.deadline).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+                        : (productionDeadline 
+                          ? new Date(productionDeadline).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+                          : "-")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Produksi</p>
+                    <span className="inline-block mt-1 font-extrabold text-white bg-amber-500 px-3 py-1 text-xs rounded-full uppercase tracking-wider">
+                      {createdOrder?.status || "On Production"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bagian Catatan Produksi */}
+              <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 border-b pb-2">CATATAN PRODUKSI</h3>
+                <ul className="space-y-4">
+                  {(() => {
+                    const notes = createdOrder?.production_notes || productionNotes || "";
+                    return notes
+                      .split("\n")
+                      .map(n => n.trim())
+                      .filter(n => n.length > 0)
+                      .map((n, i) => {
+                        const cleaned = n.replace(/^[-•*]\s*/, "");
+                        return (
+                          <li key={i} className="flex items-start gap-3">
+                            <span className="text-red-700 font-extrabold text-base leading-none">•</span>
+                            <span className="text-slate-700 font-medium text-sm leading-relaxed">{cleaned}</span>
+                          </li>
+                        );
+                      });
+                  })()}
+                </ul>
+              </div>
+
+              {/* Footer */}
+              <div className="grid grid-cols-2 gap-12 pt-12 border-t border-gray-200">
+                <div className="text-left">
+                  <p className="text-xs text-slate-400 uppercase tracking-wider">Dibuat oleh</p>
+                  <p className="font-extrabold text-slate-800 mt-16">Administrator</p>
+                  <div className="w-40 border-b border-gray-300 mt-2"></div>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-2xl font-black text-red-700 tracking-tighter">#SK-2026-001</h2>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">11 Mei 2026</p>
-                </div>
-              </div>
-
-              {/* INFO */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Customer</p>
-                  <h3 className="font-extrabold text-slate-800 text-base">{companyName || "PT Patra Niaga"}</h3>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Produk</p>
-                  <h3 className="font-extrabold text-slate-800 text-base">{cart[0]?.name || "PDH Custom"}</h3>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Quantity</p>
-                  <h3 className="font-extrabold text-slate-800 text-base">500 Pcs</h3>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Deadline</p>
-                  <h3 className="font-extrabold text-red-700 text-base">25 Mei 2026</h3>
-                </div>
-              </div>
-
-              {/* SPESIFIKASI PRODUKSI */}
-              <div>
-                <div className="flex justify-between items-center mb-4 no-print">
-                  <h2 className="font-bold text-xl">Spesifikasi Produksi</h2>
-                  <button
-                    onClick={() => setEditSpecification(!editSpecification)}
-                    className="text-red-700 font-semibold text-sm border border-gray-200 px-3 py-1 rounded-lg hover:bg-slate-50 transition-colors"
-                  >
-                    {editSpecification ? "Simpan" : "Edit"}
-                  </button>
-                </div>
-
-                {/* TITLE PRINT */}
-                <h2 className="font-bold text-xl mb-4 print-title">
-                  Spesifikasi Produksi
-                </h2>
-
-                {/* EDIT MODE */}
-                {editSpecification ? (
-                  <textarea
-                    value={productionSpecification}
-                    onChange={(e) => setProductionSpecification(e.target.value)}
-                    rows={8}
-                    className="w-full border rounded-2xl p-5 text-sm no-print"
-                  />
-                ) : null}
-
-                {/* VIEW MODE / PRINT MODE */}
-                <div className="bg-gray-50 rounded-2xl p-5 whitespace-pre-line text-sm text-gray-700">
-                  {productionSpecification}
-                </div>
-              </div>
-
-              {/* WORKFLOW */}
-              <div>
-                <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Workflow Produksi</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <WorkflowPrint step="1" title="Pengadaan Kain" />
-                  <WorkflowPrint step="2" title="Potong Kain" />
-                  <WorkflowPrint step="3" title="Bordir Logo" />
-                  <WorkflowPrint step="4" title="Jahit Produksi" />
-                  <WorkflowPrint step="5" title="Quality Control" />
-                  <WorkflowPrint step="6" title="Packing & Delivery" />
+                  <p className="text-xs text-slate-400 uppercase tracking-wider">Tanda Tangan Produksi</p>
+                  <p className="font-extrabold text-slate-800 mt-16"></p>
+                  <div className="w-40 border-b border-gray-300 mt-2 ml-auto"></div>
                 </div>
               </div>
             </div>

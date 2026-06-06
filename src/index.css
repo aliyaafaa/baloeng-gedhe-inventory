@@ -31,6 +31,26 @@ h1, h2, h3, h4, h5, h6 {
   .print-only, .print-title {
     display: block !important;
   }
+  body * {
+    visibility: hidden;
+  }
+  #invoice-content, 
+  #invoice-content *,
+  #surat-kerja-content, 
+  #surat-kerja-content * {
+    visibility: visible;
+  }
+  #invoice-content, 
+  #surat-kerja-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 20px;
+    background: white !important;
+    color: black !important;
+  }
 }
 
 ::-webkit-scrollbar{

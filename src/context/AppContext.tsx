@@ -22,6 +22,8 @@ export interface Order {
   total_amount?: number;
   unit_price?: number;
   created_at?: string;
+  dp_amount?: number;
+  payment_status?: string;
 }
 
 export interface FinanceData {
@@ -168,6 +170,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           customer_company: item.customer_company,
           product_name: item.product_name,
           unit_price: Number(item.unit_price || 0),
+          dp_amount: Number(item.dp_amount || 0),
+          payment_status: item.payment_status || "Belum Bayar",
         }));
         setOrders(parsedOrders);
       } else if (ordersErr) {
@@ -499,9 +503,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               qty: order.qty,
               unit_price: order.qty > 0 ? order.total / order.qty : order.total,
               subtotal: order.total,
-              payment_status: "Belum Bayar",
+              payment_status: order.payment_status || "Belum Bayar",
               production_status: order.status || "On Production",
               deadline: order.deadline || null,
+              dp_amount: order.dp_amount || 0,
             },
           ])
           .select();

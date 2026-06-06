@@ -15,6 +15,29 @@ import { useApp } from "../context/AppContext";
 import { supabase, isSupabaseConfigured } from "../lib/supabase";
 import bgLogo from "../assets/images/bg_logo_1779866363731.png";
 
+export function parseProductionNotes(notes: string): string[] {
+  if (!notes) return [];
+  
+  // Try splitting by newline first
+  const lines = notes.split("\n").map(n => n.trim()).filter(n => n.length > 0);
+  if (lines.length > 1) {
+    return lines.map(line => line.replace(/^[-•*]\s*/, ""));
+  }
+  
+  // If only one line, check if it contains commas
+  if (notes.includes(",")) {
+    const parts = notes.split(",").map(n => n.trim()).filter(n => n.length > 0);
+    if (parts.length > 1) {
+      return parts.map(part => {
+        const cleaned = part.replace(/^[-•*]\s*/, "");
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      });
+    }
+  }
+  
+  return [notes];
+}
+
 export default function POS() {
   // Helper components for dashboards
   const InfoCard = ({ title, value }: { title: string; value: string }) => (
@@ -210,9 +233,7 @@ export default function POS() {
   const [orderStatus, setOrderStatus] = useState("OPEN");
   const [draftOrders, setDraftOrders] = useState<any[]>([]);
   const [editNotes, setEditNotes] = useState(false);
-  const [productionNotes, setProductionNotes] = useState(
-    `- Bordir presisi logo dada kiri & lengan\n\n- Material kain pilihan kualitas premium heritage\n\n- Deadline produksi sebelum 25 Mei 2026\n\n- Quality control ketat per unit produksi`
-  );
+  const [productionNotes, setProductionNotes] = useState("");
   const [customPrice, setCustomPrice] = useState(70000);
   const [customerName, setCustomerName] = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -239,9 +260,7 @@ export default function POS() {
   const [totalReject, setTotalReject] = useState(12);
   const [rejectQty, setRejectQty] = useState(0);
   const [editSpecification, setEditSpecification] = useState(false);
-  const [productionSpecification, setProductionSpecification] = useState(
-    `- Bordir presisi logo dada kiri & lengan\n\n- Material kain pilihan kualitas premium heritage\n\n- Deadline produksi sebelum 25 Mei 2026\n\n- Quality control ketat per unit produksi`
-  );
+  const [productionSpecification, setProductionSpecification] = useState("");
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -658,11 +677,8 @@ export default function POS() {
                       placeholder="Catatan customer (bordir, nama, ukuran khusus, dll)"
                       value={item.notes || ""}
                       onChange={(e) => {
-                        if (item.isCustom) {
-                          updateCustomOrder("notes", e.target.value);
-                        } else {
-                          // Allow standard item state update if wanted, otherwise let standard behave
-                        }
+                        const newNotes = e.target.value;
+                        setCart(prev => prev.map(cItem => cItem.id === item.id ? { ...cItem, notes: newNotes } : cItem));
                       }}
                       className="w-full bg-white border border-gray-200 rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-heritage-red/10 resize-none font-medium h-16"
                     />
@@ -704,6 +720,13 @@ export default function POS() {
               <div className="pt-2 space-y-3">
                 <button 
                   onClick={() => {
+                    const cartNotes = cart
+                      .map(item => item.notes)
+                      .filter(Boolean)
+                      .map(n => n.trim())
+                      .filter(n => n.length > 0)
+                      .join("\n\n");
+                    const finalNotes = cartNotes || productionNotes || "";
                     const newOrder = {
                       id: Date.now(),
                       customer: customerName || "Guest",
@@ -717,7 +740,7 @@ export default function POS() {
                       deadline: productionDeadline || undefined,
                       dp_amount: 0,
                       payment_status: "Belum Bayar",
-                      production_notes: productionNotes,
+                      production_notes: finalNotes,
                     };
                     createOrder(newOrder);
                     setCreatedOrder(newOrder);
@@ -899,6 +922,9 @@ export default function POS() {
                       };
 
                       setCart((prev) => [...prev, customItem]);
+                      if (customOrder.notes) {
+                        setProductionNotes(customOrder.notes);
+                      }
                       setShowCustomModal(false);
                       setCustomOrder({ name: "", type: "", qty: "", price: "", notes: "" });
                     }}
@@ -1950,26 +1976,29 @@ export default function POS() {
               </div>
 
               {/* Bagian Catatan Produksi */}
-              <div className="p-5 bg-slate-50 rounded-2xl border border-gray-100">
+              <div className="p-5 bg-slate-50 rounded-2xl border border-gray-100 animate-fade-in">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 border-b pb-2">CATATAN PRODUKSI</h3>
-                <ul className="space-y-4">
-                  {(() => {
-                    const notes = createdOrder?.production_notes || productionNotes || "";
-                    return notes
-                      .split("\n")
-                      .map(n => n.trim())
-                      .filter(n => n.length > 0)
-                      .map((n, i) => {
-                        const cleaned = n.replace(/^[-•*]\s*/, "");
-                        return (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="text-red-700 font-extrabold text-base leading-none">•</span>
-                            <span className="text-slate-700 font-medium text-sm leading-relaxed">{cleaned}</span>
-                          </li>
-                        );
-                      });
-                  })()}
-                </ul>
+                {(() => {
+                  const notes = createdOrder?.production_notes || productionNotes || "";
+                  const parsedList = parseProductionNotes(notes);
+                  if (parsedList.length === 0) {
+                    return (
+                      <p className="text-slate-500 font-medium text-sm italic py-2">
+                        Belum ada catatan produksi.
+                      </p>
+                    );
+                  }
+                  return (
+                    <ul className="space-y-3">
+                      {parsedList.map((n, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="text-red-700 font-extrabold text-base leading-none">•</span>
+                          <span className="text-slate-700 font-medium text-sm leading-relaxed">{n}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  );
+                })()}
               </div>
 
               {/* Footer */}

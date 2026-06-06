@@ -139,68 +139,11 @@ export default function POS() {
     notes: "",
   });
 
-  const productTypeOptions = [
-    "Oblong",
-    "Berkerah",
-    "PDH / PDL",
-    "Jaket",
-    "Rompi"
-  ];
-  const [productTypeSearch, setProductTypeSearch] = useState("");
-  const [isProductTypeDropdownOpen, setIsProductTypeDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsProductTypeDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   const updateCustomOrder = (field: string, value: string) => {
-    const updated = {
-      ...customOrder,
+    setCustomOrder(prev => ({
+      ...prev,
       [field]: value,
-    }
-
-    if (field === "type") {
-      updated.name = value;
-    }
-
-    setCustomOrder(updated)
-
-    const qty = Number(updated.qty || 0)
-    const price = Number(updated.price || 0)
-
-    if (qty > 0 && price > 0) {
-      const customItem = {
-        id: "custom-order",
-        name: updated.name || updated.type || "Custom Order",
-        type: updated.type,
-        qty,
-        price,
-        subtotal: qty * price,
-        notes: updated.notes,
-        isCustom: true,
-      }
-
-      setCart((prev) => {
-        const exists = prev.find((item) => item.id === "custom-order")
-
-        if (exists) {
-          return prev.map((item) =>
-            item.id === "custom-order" ? customItem : item
-          )
-        }
-
-        return [...prev, customItem]
-      })
-    }
+    }));
   };
 
   const [showCustomModal, setShowCustomModal] = useState(false);
@@ -300,27 +243,14 @@ export default function POS() {
   };
 
   const addToCart = (product: { id: number; name: string; price: number }) => {
-    const productInStore = allProducts.find(p => p.id === product.id);
-    if (productInStore && productInStore.stock <= 0) {
-      alert("Stok habis!");
-      return;
-    }
-
-    const exist = cart.find((item) => item.id === product.id);
-    if (exist) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id ? { ...item, qty: item.qty + 1 } : item
-        )
-      );
-    } else {
-      setCart([...cart, { ...product, qty: 1 }]);
-    }
-    
-    // Decrement stock in store
-    if (productInStore) {
-      handleUpdateStock(product.id, -1);
-    }
+    setCustomOrder({
+      name: product.name,
+      type: product.name,
+      qty: "",
+      price: String(product.price),
+      notes: "",
+    });
+    setShowCustomModal(true);
   };
 
   const handleUpdateStock = (id: number, amount: number) => {
@@ -475,77 +405,53 @@ export default function POS() {
 
       </motion.div>
 
-      <div className="grid grid-cols-1 2xl:grid-cols-12 gap-5 mt-6 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-6 min-h-0">
         {/* PRODUCT LIST */}
-        <div className="2xl:col-span-8 flex flex-col">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {/* CUSTOM CARD */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={() => setShowCustomModal(true)}
-              className="bg-white rounded-2xl border border-white p-5 hover:shadow-lg transition cursor-pointer min-h-[220px] flex flex-col justify-between group relative overflow-hidden"
-            >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 -mr-12 -mt-12 rounded-full blur-2xl opacity-50 group-hover:bg-red-100 transition-colors" />
-              
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Custom Manufacturing
-                  </p>
-                  <h2 className="text-2xl font-bold text-slate-800 mt-3 group-hover:text-red-700 transition-colors">
-                    Custom
-                  </h2>
-                  <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed">
-                    Seragam perusahaan custom bordir/sablon berkualitas heritage
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setShowCustomModal(true)}
-                  className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-xl font-bold text-slate-400 group-hover:bg-red-700 group-hover:text-white transition-all shadow-sm"
-                >
-                  +
-                </button>
-              </div>
-
-              <div className="mt-8 flex justify-between items-center relative z-10">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    Mulai dari
-                  </p>
-                  <h3 className="text-red-700 text-2xl font-bold">
-                    Rp 70.000
-                  </h3>
-                </div>
-              </div>
-            </motion.div>
-
+        <div className="lg:col-span-8 flex flex-col">
+          <div 
+            className="grid gap-4 md:gap-6 w-full max-w-full"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
+          >
             {allProducts.map((p, i) => (
               <motion.div
                 key={p.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.05 }}
-                className="relative bg-white rounded-3xl border border-gray-200 p-6 min-h-[220px] overflow-hidden"
+                onClick={() => addToCart(p)}
+                className="relative bg-white rounded-3xl border border-gray-200 p-5 sm:p-6 min-h-[200px] h-full w-full max-w-full flex flex-col justify-between overflow-hidden shadow-sm hover:shadow-md hover:border-red-200 transition duration-200 cursor-pointer group"
               >
+                {/* Plus button at the top-right */}
                 <button
-                  onClick={() => addToCart(p)}
-                  className="absolute top-6 right-6 w-11 h-11 min-w-11 min-h-11 shrink-0 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 text-xl leading-none hover:bg-red-700 hover:text-white transition cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    addToCart(p);
+                  }}
+                  className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 min-w-11 min-h-11 shrink-0 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-red-700 hover:text-white hover:bg-red-700 hover:border-red-700 text-xl font-bold leading-none transition-all cursor-pointer shadow-sm active:scale-95 z-10"
                 >
                   +
                 </button>
 
-                <p className="text-xs uppercase tracking-widest text-gray-400 font-bold pr-14">
-                  {p.category}
-                </p>
+                <div className="flex-1 flex flex-col justify-between mt-1">
+                  <div>
+                    <span className="inline-block bg-slate-50 border border-gray-200 text-slate-500 px-2.5 py-1 rounded-full text-[9px] sm:text-xs font-bold uppercase tracking-widest mb-4">
+                      {p.category}
+                    </span>
 
-                <h3 className="text-xl font-bold mt-8 pr-14 text-slate-800">
-                  {p.name}
-                </h3>
+                    <h3 className="text-base sm:text-lg font-bold pr-14 text-slate-800 leading-tight group-hover:text-red-700 transition-colors">
+                      {p.name}
+                    </h3>
+                  </div>
 
-                <p className="text-red-700 font-bold text-2xl mt-3">
-                  Rp {p.price.toLocaleString("id-ID")}
-                </p>
+                  <div className="mt-6">
+                    <p className="text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-widest pl-0.5">
+                      Mulai dari
+                    </p>
+                    <p className="text-red-700 font-extrabold text-xl sm:text-2xl mt-1 leading-none">
+                      Rp {p.price.toLocaleString("id-ID")}
+                    </p>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -617,7 +523,7 @@ export default function POS() {
         </div>
 
         {/* CART / CHECKOUT */}
-        <div className="2xl:col-span-4 mt-6 2xl:mt-0 h-full">
+        <div className="lg:col-span-4 mt-6 lg:mt-0 h-full">
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -820,124 +726,107 @@ export default function POS() {
 
       {/* CUSTOM MODAL */}
       {showCustomModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 text-slate-800">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-[520px] max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-y-auto border border-gray-100 flex flex-col"
+            className="w-full max-w-[500px] max-h-[92vh] bg-white rounded-3xl shadow-2xl overflow-y-auto border border-gray-100 flex flex-col"
           >
-            <div className="p-8 border-b border-gray-200">
-               <h2 className="text-2xl font-bold text-slate-800">Custom Manufacturing</h2>
-               <p className="text-sm text-slate-500 mt-1">Konfigurasi pesanan khusus untuk instansi atau komunitas</p>
+            <div className="p-6 sm:p-8 border-b border-gray-200">
+               <span className="inline-block bg-red-50 text-red-700 border border-red-100 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-2">
+                 Configure Order
+               </span>
+               <h2 className="text-2xl font-bold text-slate-800">Form Garment: {customOrder.type}</h2>
+               <p className="text-xs text-slate-500 mt-1">Sesuaikan spesifikasi dan kuantitas pesanan Anda</p>
             </div>
-            <div className="p-8 space-y-6">
+            
+            <div className="p-6 sm:p-8 space-y-6">
                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jenis Produk</label>
-                        <button
-                          type="button"
-                          onClick={() => setIsProductTypeDropdownOpen(!isProductTypeDropdownOpen)}
-                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none flex justify-between items-center text-left hover:border-slate-300 transition-colors cursor-pointer min-h-[46px]"
-                        >
-                          <span className={customOrder.type ? "text-slate-800 font-semibold" : "text-slate-400"}>
-                            {customOrder.type || "Pilih Jenis Produk"}
-                          </span>
-                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-                        </button>
-                        
-                        {isProductTypeDropdownOpen && (
-                          <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden">
-                            <div className="p-2 border-b border-gray-100 bg-slate-50">
-                              <input
-                                type="text"
-                                placeholder="Cari jenis produk..."
-                                value={productTypeSearch}
-                                onChange={(e) => setProductTypeSearch(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-700 font-medium"
-                                autoFocus
-                              />
-                            </div>
-                            <div className="max-h-48 overflow-y-auto py-1">
-                              {productTypeOptions
-                                .filter(option => option.toLowerCase().includes(productTypeSearch.toLowerCase()))
-                                .map((option) => (
-                                  <button
-                                    key={option}
-                                    type="button"
-                                    onClick={() => {
-                                      updateCustomOrder("type", option);
-                                      setProductTypeSearch("");
-                                      setIsProductTypeDropdownOpen(false);
-                                    }}
-                                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${
-                                      customOrder.type === option ? "text-red-700 font-bold bg-red-50/50" : "text-slate-700"
-                                    }`}
-                                  >
-                                    {option}
-                                  </button>
-                                ))}
-                              {productTypeOptions.filter(option => option.toLowerCase().includes(productTypeSearch.toLowerCase())).length === 0 && (
-                                <div className="px-4 py-3 text-xs text-slate-400 text-center">
-                                  Produk tidak ditemukan
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                  {/* Readonly product type */}
+                  <div className="space-y-1.5">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Nama Produk</label>
+                     <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 font-extrabold text-sm select-none">
+                       {customOrder.type}
                      </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Qty</label>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Jumlah Pesanan (Pcs)</label>
                         <input
                           type="number"
                           value={customOrder.qty}
                           onChange={(e) => updateCustomOrder("qty", e.target.value)}
-                          placeholder="Min. 24"
-                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                          placeholder="Contoh: 100"
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-700 font-semibold"
+                        />
+                     </div>
+
+                     <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Harga Kesepakatan (Rp)</label>
+                        <input 
+                          type="number" 
+                          value={customOrder.price} 
+                          onChange={(e) => updateCustomOrder("price", e.target.value)}
+                          placeholder="70000"
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none font-bold text-red-700 focus:border-red-700" 
                         />
                      </div>
                   </div>
+
                   <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga per Pcs (Rp)</label>
-                      <input 
-                        type="number" 
-                        value={customOrder.price} 
-                        onChange={(e) => updateCustomOrder("price", e.target.value)}
-                        placeholder="70000"
-                        className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none font-bold text-red-700" 
-                      />
-                  </div>
-                  <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Catatan Spesifikasi</label>
+                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-0.5">Catatan Spesifikasi</label>
                      <textarea
                        value={customOrder.notes}
                        onChange={(e) => updateCustomOrder("notes", e.target.value)}
-                       placeholder="Bahan, warna, bordir logo..."
-                       className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none h-24 resize-none"
+                       placeholder="Contoh: Bahan Cotton Combed 30s, Sablon Plastisol depan belakang, ukuran M-XL..."
+                       className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none h-28 resize-none focus:border-red-700"
                      />
                   </div>
                </div>
+
                <div className="flex gap-3 pt-4">
                   <button 
-                    onClick={() => setShowCustomModal(false)}
-                    className="flex-1 py-4 text-slate-500 font-bold uppercase tracking-widest text-xs hover:bg-slate-50 rounded-full transition"
+                    onClick={() => {
+                      setShowCustomModal(false);
+                      setCustomOrder({ name: "", type: "", qty: "", price: "", notes: "" });
+                    }}
+                    className="flex-1 py-3.5 text-slate-500 font-bold uppercase tracking-widest text-[11px] hover:bg-slate-50 rounded-full transition"
                   >
                     Batal
                   </button>
                   <button 
                     onClick={() => {
-                      if (!customOrder.type) {
-                        alert("Harap pilih Jenis Produk Terlebih Dahulu!");
+                      if (!customOrder.qty || Number(customOrder.qty) <= 0) {
+                        alert("Harap isi kuantitas pesanan terlebih dahulu!");
                         return;
                       }
-                      if (!customOrder.qty || !customOrder.price) {
-                        alert("Harap isi Quantity dan Harga Terlebih Dahulu!");
+                      if (!customOrder.price || Number(customOrder.price) <= 0) {
+                        alert("Harap isi harga satuan terlebih dahulu!");
                         return;
                       }
-                      updateCustomOrder("qty", customOrder.qty);
+                      
+                      const qty = Number(customOrder.qty);
+                      const price = Number(customOrder.price);
+                      const subtotal = qty * price;
+
+                      const id = `custom-${customOrder.type}-${Date.now()}`;
+                      const customItem = {
+                        id,
+                        name: customOrder.type,
+                        type: customOrder.type,
+                        qty,
+                        price,
+                        subtotal,
+                        notes: customOrder.notes,
+                        isCustom: true,
+                      };
+
+                      setCart((prev) => [...prev, customItem]);
                       setShowCustomModal(false);
+                      setCustomOrder({ name: "", type: "", qty: "", price: "", notes: "" });
                     }}
-                    className="flex-1 py-4 bg-red-700 text-white font-bold uppercase tracking-widest text-xs rounded-full shadow-lg shadow-red-100 hover:bg-red-800 transition active:scale-95"
+                    className="flex-1 py-3.5 bg-red-700 text-white font-bold uppercase tracking-widest text-[11px] rounded-full shadow-lg shadow-red-100 hover:bg-red-800 transition active:scale-95"
                   >
                     Tambah ke Order
                   </button>

@@ -1140,9 +1140,9 @@ export default function TrackingPage() {
                     </div>
 
                     {/* CONTENT TO PRINT */}
-                    <div id="invoice-content" className="p-12 space-y-10 overflow-y-auto print-page flex-1">
+                    <div id="invoice-content" className="invoice-print p-6 space-y-4 overflow-y-auto flex-1">
                       {/* Header Invoice */}
-                      <div className="flex flex-col sm:flex-row justify-between items-start border-b-2 border-dashed border-gray-200 pb-8 mb-4">
+                      <div className="flex flex-col sm:flex-row justify-between items-start border-b-2 border-dashed border-gray-200 pb-4 mb-4">
                         <div className="flex items-center gap-4 mb-4 sm:mb-0">
                           <img src={bgLogo} className="h-16 w-16 object-contain" referrerPolicy="no-referrer" />
                           <div>
@@ -1162,8 +1162,8 @@ export default function TrackingPage() {
                       </div>
 
                       {/* Informasi Order */}
-                      <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">INFORMASI ORDER</h3>
+                      <div className="p-5 bg-slate-50 rounded-2xl border border-gray-100">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">INFORMASI ORDER</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                           <div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nomor Invoice</p>
@@ -1189,8 +1189,8 @@ export default function TrackingPage() {
                       </div>
 
                       {/* Detail Produk */}
-                      <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">DETAIL PRODUK</h3>
+                      <div className="p-5 bg-slate-50 rounded-2xl border border-gray-100">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">DETAIL PRODUK</h3>
                         <div className="overflow-hidden border border-gray-200 rounded-2xl bg-white shadow-sm">
                           <table className="w-full">
                             <thead className="bg-slate-50 border-b border-gray-100">
@@ -1214,8 +1214,8 @@ export default function TrackingPage() {
                       </div>
 
                       {/* Ringkasan Pembayaran */}
-                      <div className="p-8 bg-slate-50 rounded-3xl border border-gray-100">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6">RINGKASAN PEMBAYARAN</h3>
+                      <div className="p-5 bg-slate-50 rounded-2xl border border-gray-100 payment-summary">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">RINGKASAN PEMBAYARAN</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           {/* Status */}
                           <div className="flex flex-col justify-center items-center p-6 bg-white rounded-2xl border border-gray-200 shadow-sm col-span-1">
@@ -1261,7 +1261,11 @@ export default function TrackingPage() {
                         Tutup
                       </button>
                       <button
-                        onClick={() => window.print()}
+                        onClick={() => {
+                          setTimeout(() => {
+                            window.print();
+                          }, 300);
+                        }}
                         className="px-8 py-4 rounded-2xl bg-slate-900 text-white font-bold uppercase tracking-widest text-[10px] hover:bg-slate-800 transition shadow-lg"
                       >
                         Print Invoice

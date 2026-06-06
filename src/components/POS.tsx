@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   ShoppingCart, 
   Trash2, 
@@ -7,7 +7,8 @@ import {
   Minus, 
   ChevronRight,
   PackageCheck,
-  X
+  X,
+  ChevronDown
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useApp } from "../context/AppContext";
@@ -113,8 +114,11 @@ export default function POS() {
   };
 
   const [allProducts, setAllProducts] = useState([
-    { id: 5, name: "Polo Shirt Classic", price: 150000, category: "Apparel", stock: 30 },
-    { id: 6, name: "Totebag Baloeng Gedhe", price: 75000, category: "Accessories", stock: 100 },
+    { id: 1, name: "Oblong", price: 70000, category: "Apparel", stock: 100 },
+    { id: 2, name: "Berkerah", price: 85000, category: "Apparel", stock: 100 },
+    { id: 3, name: "PDH / PDL", price: 120000, category: "Apparel", stock: 100 },
+    { id: 4, name: "Jaket", price: 150000, category: "Apparel", stock: 100 },
+    { id: 5, name: "Rompi", price: 95000, category: "Apparel", stock: 100 },
   ]);
   const [cart, setCart] = useState<{
     id: number | string;
@@ -128,17 +132,44 @@ export default function POS() {
     isCustom?: boolean;
   }[]>([]);
   const [customOrder, setCustomOrder] = useState({
-    name: "Custom Order",
-    type: "PDH / PDL",
+    name: "",
+    type: "",
     qty: "",
     price: "",
     notes: "",
   });
 
+  const productTypeOptions = [
+    "Oblong",
+    "Berkerah",
+    "PDH / PDL",
+    "Jaket",
+    "Rompi"
+  ];
+  const [productTypeSearch, setProductTypeSearch] = useState("");
+  const [isProductTypeDropdownOpen, setIsProductTypeDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsProductTypeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const updateCustomOrder = (field: string, value: string) => {
     const updated = {
       ...customOrder,
       [field]: value,
+    }
+
+    if (field === "type") {
+      updated.name = value;
     }
 
     setCustomOrder(updated)
@@ -149,7 +180,7 @@ export default function POS() {
     if (qty > 0 && price > 0) {
       const customItem = {
         id: "custom-order",
-        name: updated.name || "Custom Order",
+        name: updated.name || updated.type || "Custom Order",
         type: updated.type,
         qty,
         price,
@@ -316,8 +347,8 @@ export default function POS() {
   const removeItem = (id: number | string) => {
     if (id === "custom-order") {
       setCustomOrder({
-        name: "Custom Order",
-        type: "PDH / PDL",
+        name: "",
+        type: "",
         qty: "",
         price: "",
         notes: "",
@@ -804,15 +835,56 @@ export default function POS() {
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jenis Produk</label>
-                        <select
-                          value={customOrder.type}
-                          onChange={(e) => updateCustomOrder("type", e.target.value)}
-                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none"
+                        <button
+                          type="button"
+                          onClick={() => setIsProductTypeDropdownOpen(!isProductTypeDropdownOpen)}
+                          className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none flex justify-between items-center text-left hover:border-slate-300 transition-colors cursor-pointer min-h-[46px]"
                         >
-                           <option>PDH / PDL</option>
-                           <option>Kaos Polo</option>
-                           <option>Jaket Bomber</option>
-                        </select>
+                          <span className={customOrder.type ? "text-slate-800 font-semibold" : "text-slate-400"}>
+                            {customOrder.type || "Pilih Jenis Produk"}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        </button>
+                        
+                        {isProductTypeDropdownOpen && (
+                          <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl z-50 overflow-hidden">
+                            <div className="p-2 border-b border-gray-100 bg-slate-50">
+                              <input
+                                type="text"
+                                placeholder="Cari jenis produk..."
+                                value={productTypeSearch}
+                                onChange={(e) => setProductTypeSearch(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-red-700 font-medium"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto py-1">
+                              {productTypeOptions
+                                .filter(option => option.toLowerCase().includes(productTypeSearch.toLowerCase()))
+                                .map((option) => (
+                                  <button
+                                    key={option}
+                                    type="button"
+                                    onClick={() => {
+                                      updateCustomOrder("type", option);
+                                      setProductTypeSearch("");
+                                      setIsProductTypeDropdownOpen(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${
+                                      customOrder.type === option ? "text-red-700 font-bold bg-red-50/50" : "text-slate-700"
+                                    }`}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              {productTypeOptions.filter(option => option.toLowerCase().includes(productTypeSearch.toLowerCase())).length === 0 && (
+                                <div className="px-4 py-3 text-xs text-slate-400 text-center">
+                                  Produk tidak ditemukan
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                      </div>
                      <div className="space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Qty</label>
@@ -854,6 +926,10 @@ export default function POS() {
                   </button>
                   <button 
                     onClick={() => {
+                      if (!customOrder.type) {
+                        alert("Harap pilih Jenis Produk Terlebih Dahulu!");
+                        return;
+                      }
                       if (!customOrder.qty || !customOrder.price) {
                         alert("Harap isi Quantity dan Harga Terlebih Dahulu!");
                         return;

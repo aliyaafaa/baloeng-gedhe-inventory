@@ -16,6 +16,9 @@ import {
   FileText,
 } from "lucide-react"
 
+import jsPDF from "jspdf"
+import autoTable from "jspdf-autotable"
+
 import { useApp } from "../context/AppContext"
 
 export default function FinancePage() {
@@ -27,6 +30,7 @@ export default function FinancePage() {
   } = useApp()
 
   const [yearFilter, setYearFilter] = useState("2026")
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const totalIncome = orders.reduce(
     (sum, order) => sum + Number(order.total || 0),
@@ -76,6 +80,72 @@ export default function FinancePage() {
     },
   ]
 
+  const generateFinancePDF = (type: "monthly" | "yearly") => {
+    const doc = new jsPDF()
+
+    doc.setFontSize(20)
+    doc.text("LAPORAN KEUANGAN", 105, 20, {
+      align: "center",
+    })
+
+    doc.setFontSize(10)
+    doc.text(
+      `Baloeng Gedhe Indonesia`,
+      105,
+      28,
+      { align: "center" }
+    )
+
+    doc.text(
+      type === "monthly"
+        ? `Laporan Bulanan ${yearFilter}`
+        : `Laporan Tahunan ${yearFilter}`,
+      105,
+      34,
+      { align: "center" }
+    )
+
+    doc.line(15, 40, 195, 40)
+
+    doc.text(
+      `Total Pendapatan : Rp ${totalIncome.toLocaleString("id-ID")}`,
+      15,
+      55
+    )
+
+    doc.text(
+      `Total Pengeluaran : Rp ${totalExpense.toLocaleString("id-ID")}`,
+      15,
+      65
+    )
+
+    doc.text(
+      `Laba Bersih : Rp ${netProfit.toLocaleString("id-ID")}`,
+      15,
+      75
+    )
+
+    autoTable(doc, {
+      startY: 90,
+      head: [[
+        "Invoice",
+        "Customer",
+        "Produk",
+        "Total"
+      ]],
+      body: orders.map(order => [
+        order.invoice_no || `INV-${order.id}`,
+        order.customer,
+        order.product,
+        `Rp ${Number(order.total).toLocaleString("id-ID")}`
+      ])
+    })
+
+    doc.save(
+      `Laporan-Keuangan-${type}-${yearFilter}.pdf`
+    )
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
 
@@ -93,7 +163,7 @@ export default function FinancePage() {
         </div>
 
         <button
-          onClick={() => window.print()}
+          onClick={() => setShowExportModal(true)}
           className="w-full md:w-auto px-6 py-4 rounded-2xl bg-red-700 hover:bg-red-800 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-100 transition-all hover:translate-y-[-2px] active:translate-y-0 cursor-pointer"
         >
           <Download size={18} />
@@ -189,16 +259,21 @@ export default function FinancePage() {
               Pencatatan Pembelian Material
             </h2>
 
-            <p className="text-gray-500 mt-1 text-sm font-medium">
+            <p className="text-gray-500 mt-1 text-sm font-medium mb-4">
               Data otomatis dari halaman Inventaris Stok
+            </p>
+
+            <p className="text-sm text-slate-500 mb-4">
+              Menampilkan 5 data terbaru dari {expenseRecords.length} pembelian material
             </p>
           </div>
 
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-150">
+        <div className="overflow-auto max-h-[550px] rounded-2xl border border-slate-150">
+          <div className="expense-table-scroll">
 
-          <table className="w-full min-w-[1000px] border-collapse bg-white">
+            <table className="w-full min-w-[1000px] border-collapse bg-white">
 
             <thead>
               <tr className="bg-slate-50 text-left text-[11px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-200">
@@ -225,7 +300,7 @@ export default function FinancePage() {
                   </td>
                 </tr>
               ) : (
-                expenseRecords.map((item) => (
+                expenseRecords.slice(0, 5).map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors text-sm text-slate-700">
                     <td className="p-3 border">
                       <input
@@ -318,8 +393,9 @@ export default function FinancePage() {
               )}
             </tbody>
 
-          </table>
+            </table>
 
+          </div>
         </div>
 
       </div>
@@ -327,11 +403,15 @@ export default function FinancePage() {
       {/* INCOME TABLE */}
       <div className="bg-white rounded-[32px] border border-gray-200 p-6 sm:p-8 shadow-sm">
 
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-5">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">
           Riwayat Pendapatan dari POS
         </h2>
 
-        <div className="overflow-x-auto">
+        <p className="text-sm text-slate-500 mb-4">
+          Menampilkan 5 data terbaru dari {orders.length} transaksi
+        </p>
+
+        <div className="overflow-auto max-h-[500px]">
 
           <table className="w-full min-w-[850px]">
 
@@ -356,7 +436,7 @@ export default function FinancePage() {
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                orders.slice(0, 5).map((order) => (
                   <tr key={order.id} className="border-b border-gray-100 text-sm text-slate-700">
                     <td className="py-5 font-bold text-slate-800">
                       {order.invoice_no || `INV-${order.id}`}
@@ -385,6 +465,56 @@ export default function FinancePage() {
         </div>
 
       </div>
+
+      {/* EXPORT MODAL */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+
+          <div className="bg-white rounded-3xl w-full max-w-md p-8">
+
+            <h2 className="text-2xl font-black mb-2">
+              Export Laporan
+            </h2>
+
+            <p className="text-slate-500 mb-8">
+              Pilih format laporan yang ingin diunduh
+            </p>
+
+            <div className="space-y-4">
+
+              <button
+                onClick={() => {
+                  generateFinancePDF("monthly")
+                  setShowExportModal(false)
+                }}
+                className="w-full bg-red-700 text-white py-4 rounded-2xl font-bold cursor-pointer hover:bg-red-800 transition-all text-sm"
+              >
+                Laporan Bulanan
+              </button>
+
+              <button
+                onClick={() => {
+                  generateFinancePDF("yearly")
+                  setShowExportModal(false)
+                }}
+                className="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold cursor-pointer hover:bg-slate-900 transition-all text-sm"
+              >
+                Laporan Tahunan
+              </button>
+
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="w-full border py-4 rounded-2xl font-bold cursor-pointer hover:bg-slate-50 transition-all text-sm"
+              >
+                Batal
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
     </div>
   )

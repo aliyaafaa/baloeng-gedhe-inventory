@@ -91,7 +91,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState("Semua")
   const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
   const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
-  const [selectedDraft, setSelectedDraft] = useState<string | null>(null)
+  const [selectedDraft, setSelectedDraft] = useState<number | null>(null)
 
   const getProgress = (item: MaterialDraftItem) => {
     const need = Number(item.volumeNeed || 0)
@@ -161,7 +161,7 @@ export default function InventoryPage() {
   }
 
   const activeDraft = materialDrafts.find(
-    (draft) => draft.product === selectedDraft
+    (draft) => draft.id === selectedDraft
   )
 
   return (
@@ -182,7 +182,7 @@ export default function InventoryPage() {
       {/* FILTER & SEARCH BAR */}
       <div className="bg-white rounded-[32px] border border-gray-200 p-5 sm:p-6 mb-8 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
         
-        <div className="w-full md:w-auto flex-1 max-w-md">
+        <div className="w-full">
           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Cari Draf</label>
           <input
             type="text"
@@ -191,20 +191,6 @@ export default function InventoryPage() {
             onChange={(e) => setSearchDraft(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm"
           />
-        </div>
-
-        <div className="w-full md:w-48">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Filter Status</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-sm cursor-pointer"
-          >
-            <option value="Semua">Semua Order</option>
-            <option value="Draft Material">Draft Material</option>
-            <option value="On Production">On Production</option>
-            <option value="Completed">Completed</option>
-          </select>
         </div>
 
       </div>
@@ -224,11 +210,11 @@ export default function InventoryPage() {
               <tr className="border-b border-gray-200 text-left">
 
                 <th className="py-4 text-xs uppercase tracking-widest text-slate-400">
-                  Produk
+                  Customer
                 </th>
 
                 <th className="text-xs uppercase tracking-widest text-slate-400">
-                  Material
+                  Produk
                 </th>
 
                 <th className="text-xs uppercase tracking-widest text-slate-400">
@@ -255,43 +241,52 @@ export default function InventoryPage() {
                   </td>
                 </tr>
               ) : (
-                warehouseStock.map((stock) => (
+                warehouseStock.map((s) => {
+                  const draftObj = materialDrafts.find((d) => d.product === s.sourceOrder);
+                  const stock = {
+                    ...s,
+                    customerName: draftObj ? draftObj.customer : "-"
+                  };
 
-                  <tr
-                    key={stock.id}
-                    className="border-b border-slate-100"
-                  >
+                  return (
+                    <tr
+                      key={stock.id}
+                      className="border-b border-slate-100"
+                    >
 
-                    <td className="py-5 font-semibold text-slate-800 text-sm">
-                      {stock.sourceOrder}
-                    </td>
+                      <td className="py-5 font-semibold text-slate-800 text-sm">
+                        {stock.customerName}
+                      </td>
 
-                    <td className="text-slate-700 text-sm">
-                      {stock.materialName}
-                    </td>
+                      <td className="text-slate-700 text-sm">
+                        {stock.materialName}
+                      </td>
 
-                    <td className="font-bold text-red-700 text-sm">
-                      {stock.stockLeft}
-                    </td>
+                      <td className="font-bold text-red-700 text-sm">
+                        {stock.stockLeft}
+                      </td>
 
-                    <td className="text-slate-600 text-sm">
-                      {stock.unit}
-                    </td>
+                      <td className="text-slate-600 text-sm">
+                        {stock.unit}
+                      </td>
 
-                    <td>
+                      <td>
 
-                      <button
-                        onClick={() => setSelectedDraft(stock.sourceOrder)}
-                        className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold"
-                      >
-                        Kelola Material
-                      </button>
+                        <button
+                          onClick={() => {
+                            const matchingDraft = materialDrafts.find((d) => d.product === stock.sourceOrder);
+                            setSelectedDraft(matchingDraft ? matchingDraft.id : stock.id);
+                          }}
+                          className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-800 transition-all text-xs cursor-pointer whitespace-nowrap"
+                        >
+                          Kelola Material
+                        </button>
 
-                    </td>
+                      </td>
 
-                  </tr>
-
-                ))
+                    </tr>
+                  );
+                })
               )}
 
             </tbody>

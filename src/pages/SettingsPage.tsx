@@ -15,12 +15,14 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
   const [companyAddress, setCompanyAddress] = useState("");
   const [invoicePrefix, setInvoicePrefix] = useState("");
   const [invoiceCounter, setInvoiceCounter] = useState(0);
+  const [adminEmail, setAdminEmail] = useState("");
 
   useEffect(() => {
     async function loadDbSettings() {
       if (!isSupabaseConfigured()) {
         setCompanyName(settings.business.companyName);
         setCompanyEmail(settings.business.companyEmail);
+        setAdminEmail(settings.business.adminEmail || "");
         setCompanyAddress(settings.business.address);
         setInvoicePrefix(settings.invoice.prefix);
         setInvoiceCounter(settings.invoice.startNumber);
@@ -37,6 +39,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
           setDbSettingsId(row.id);
           setCompanyName(row.company_name || "");
           setCompanyEmail(row.company_email || "");
+          setAdminEmail(row.admin_email || "");
           setCompanyAddress(row.company_address || "");
           setInvoicePrefix(row.invoice_prefix || "");
           setInvoiceCounter(Number(row.invoice_counter || 0));
@@ -47,6 +50,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
               ...prev.business,
               companyName: row.company_name || prev.business.companyName,
               companyEmail: row.company_email || prev.business.companyEmail,
+              adminEmail: row.admin_email || prev.business.adminEmail,
               address: row.company_address || prev.business.address,
             },
             invoice: {
@@ -58,6 +62,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
         } else {
           setCompanyName(settings.business.companyName);
           setCompanyEmail(settings.business.companyEmail);
+          setAdminEmail(settings.business.adminEmail || "");
           setCompanyAddress(settings.business.address);
           setInvoicePrefix(settings.invoice.prefix);
           setInvoiceCounter(settings.invoice.startNumber);
@@ -66,6 +71,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
         console.error("Failed to load settings:", err);
         setCompanyName(settings.business.companyName);
         setCompanyEmail(settings.business.companyEmail);
+        setAdminEmail(settings.business.adminEmail || "");
         setCompanyAddress(settings.business.address);
         setInvoicePrefix(settings.invoice.prefix);
         setInvoiceCounter(settings.invoice.startNumber);
@@ -84,6 +90,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
       const payload = {
         company_name: companyName,
         company_email: companyEmail,
+        admin_email: adminEmail,
         company_address: companyAddress,
         invoice_prefix: invoicePrefix,
         invoice_counter: Number(invoiceCounter),
@@ -127,6 +134,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
             ...prev.business,
             companyName: companyName,
             companyEmail: companyEmail,
+            adminEmail: adminEmail,
             address: companyAddress,
           },
           invoice: {
@@ -213,40 +221,6 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
     }))
   }
 
-  const addMaterialOption = (type: "fabrics" | "units" | "categories") => {
-    setSettings((prev) => ({
-      ...prev,
-      material: {
-        ...prev.material,
-        [type]: [...prev.material[type], ""],
-      },
-    }))
-  }
-
-  const updateMaterialOption = (type: "fabrics" | "units" | "categories", index: number, value: string) => {
-    setSettings((prev) => {
-      const updated = [...prev.material[type]]
-      updated[index] = value
-      return {
-        ...prev,
-        material: {
-          ...prev.material,
-          [type]: updated,
-        },
-      }
-    })
-  }
-
-  const deleteMaterialOption = (type: "fabrics" | "units" | "categories", index: number) => {
-    setSettings((prev) => ({
-      ...prev,
-      material: {
-        ...prev.material,
-        [type]: prev.material[type].filter((_, i) => i !== index),
-      },
-    }))
-  }
-
   return (
     <div className="p-5 sm:p-8 lg:p-10 space-y-8" id="settings-page">
       <div>
@@ -302,58 +276,16 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
         <div className="space-y-6">
           <div className="max-w-md">
             <label className="setting-label block text-xs font-bold tracking-widest uppercase text-gray-400 mb-2">
-              Email Login Admin (Pratinjau)
+              Email Login Admin
             </label>
             <input
               type="email"
-              value={adminSettings.email}
-              onChange={(e) =>
-                setAdminSettings({
-                  ...adminSettings,
-                  email: e.target.value
-                })
-              }
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
               placeholder="Masukkan email admin"
               className="w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition shadow-sm"
+              id="input-admin-email"
             />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="setting-label text-xs font-bold tracking-widest uppercase text-gray-400 block mb-2">
-                Email Login Admin
-              </label>
-
-              <input
-                type="email"
-                value={adminSettings.email}
-                onChange={(e) =>
-                  setAdminSettings({
-                    ...adminSettings,
-                    email: e.target.value
-                  })
-                }
-                className="setting-input w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition"
-              />
-            </div>
-
-            <div>
-              <label className="setting-label text-xs font-bold tracking-widest uppercase text-gray-400 block mb-2">
-                Email Login Admin
-              </label>
-
-              <input
-                type="email"
-                value={adminSettings.email}
-                onChange={(e) =>
-                  setAdminSettings({
-                    ...adminSettings,
-                    email: e.target.value
-                  })
-                }
-                className="setting-input w-full h-14 px-6 rounded-2xl border border-gray-200 outline-none focus:border-red-700 bg-white text-slate-800 transition"
-              />
-            </div>
           </div>
         </div>
       </section>
@@ -456,37 +388,7 @@ export default function SettingsPage({ settings, setSettings }: SettingsPageProp
         </div>
       </section>
 
-      {/* MATERIAL */}
-      <section className="bg-white border border-gray-200 rounded-3xl p-5 sm:p-7 shadow-sm" id="material-settings-sec">
-        <h2 className="text-xl font-bold mb-5 text-slate-800">Pengaturan Material</h2>
 
-        <MaterialEditor
-          title="Pilihan Kain"
-          type="fabrics"
-          data={settings.material.fabrics}
-          addMaterialOption={addMaterialOption}
-          updateMaterialOption={updateMaterialOption}
-          deleteMaterialOption={deleteMaterialOption}
-        />
-
-        <MaterialEditor
-          title="Satuan"
-          type="units"
-          data={settings.material.units}
-          addMaterialOption={addMaterialOption}
-          updateMaterialOption={updateMaterialOption}
-          deleteMaterialOption={deleteMaterialOption}
-        />
-
-        <MaterialEditor
-          title="Kategori Material"
-          type="categories"
-          data={settings.material.categories}
-          addMaterialOption={addMaterialOption}
-          updateMaterialOption={updateMaterialOption}
-          deleteMaterialOption={deleteMaterialOption}
-        />
-      </section>
 
       <div className="flex justify-end pt-4">
         <button 
@@ -550,57 +452,4 @@ function Select({ label, options = [], ...props }: SelectProps) {
   )
 }
 
-interface MaterialEditorProps {
-  title: string
-  type: "fabrics" | "units" | "categories"
-  data: string[]
-  addMaterialOption: (type: "fabrics" | "units" | "categories") => void
-  updateMaterialOption: (type: "fabrics" | "units" | "categories", index: number, value: string) => void
-  deleteMaterialOption: (type: "fabrics" | "units" | "categories", index: number) => void
-}
 
-function MaterialEditor({
-  title,
-  type,
-  data,
-  addMaterialOption,
-  updateMaterialOption,
-  deleteMaterialOption,
-}: MaterialEditorProps) {
-  return (
-    <div className="mb-8" id={`material-editor-${type}`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-slate-800">{title}</h3>
-
-        <button
-          onClick={() => addMaterialOption(type)}
-          id={`btn-add-meta-${type}`}
-          className="text-sm font-bold text-red-700 hover:text-red-800 transition"
-        >
-          + Tambah
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {data.map((item, index) => (
-          <div key={index} className="flex gap-3" id={`meta-${type}-row-${index}`}>
-            <input
-              value={item}
-              id={`input-meta-${type}-${index}`}
-              onChange={(e) => updateMaterialOption(type, index, e.target.value)}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-red-700 bg-white"
-            />
-
-            <button
-              onClick={() => deleteMaterialOption(type, index)}
-              id={`btn-delete-meta-${type}-${index}`}
-              className="px-4 rounded-2xl bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-700 transition"
-            >
-              <Trash2 size={18} />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

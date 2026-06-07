@@ -3,13 +3,14 @@ const defaultSettings = {
     companyName: "Baloeng Gedhe",
     subtitle: "by 2 BD03C TUP",
     companyEmail: "",
+    adminEmail: "baloenggedheindonesia@gmail.com",
     address: "Purwokerto Timur, Indonesia",
     adminRole: "Production Manager",
   },
 
   invoice: {
     prefix: "INV",
-    startNumber: 12,
+    startNumber: 1,
     paymentDefault: "Belum Bayar",
   },
 
@@ -25,12 +26,6 @@ const defaultSettings = {
       "Quality Control",
       "Packing & Delivery",
     ],
-  },
-
-  material: {
-    fabrics: ["Kain Drill", "Combed 24s", "Combed 30s"],
-    units: ["kg", "meter", "pcs"],
-    categories: ["Kain", "Material Utama", "Lain-lain"],
   },
 }
 

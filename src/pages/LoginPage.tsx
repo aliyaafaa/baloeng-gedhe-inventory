@@ -9,16 +9,11 @@ interface LoginPageProps {
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [supabaseActive, setSupabaseActive] = useState(false)
 
   useEffect(() => {
-    const savedEmail = localStorage.getItem("rememberEmail")
-    if (savedEmail) {
-      setEmail(savedEmail)
-    }
     setSupabaseActive(isSupabaseConfigured())
   }, [])
 
@@ -36,13 +31,6 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     }
 
     setIsLoading(true)
-    
-    if (rememberMe) {
-      localStorage.setItem("rememberEmail", email)
-    } else {
-      localStorage.removeItem("rememberEmail")
-      localStorage.removeItem("rememberPassword")
-    }
 
     try {
       if (supabaseActive) {
@@ -55,17 +43,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         if (authError) {
           throw new Error(authError.message)
         }
-
-        if (data.session) {
-          localStorage.setItem("token", data.session.access_token)
-          localStorage.setItem("user", JSON.stringify(data.session.user || { email }))
-          sessionStorage.setItem("isLoggedIn", "true")
-        }
       } else {
-        // Fallback for easy offline/preview testing
-        localStorage.setItem("token", "mock-token-123456")
-        localStorage.setItem("user", JSON.stringify({ email }))
-        sessionStorage.setItem("isLoggedIn", "true")
+        // Supabase is not configured yet, throw error to trigger admin backup checks
+        if (email === "baloenggedheindonesia@gmail.com" && password === "admin123") {
+          throw new Error("Local instance not configured, proceed with admin backup fallback")
+        } else {
+          throw new Error("Supabase is not configured. Use administrative fallback credentials.")
+        }
       }
 
       setError("")
@@ -78,8 +62,30 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         email === ADMIN_EMAIL &&
         password === ADMIN_PASSWORD
       ) {
-        localStorage.setItem("token", "admin-backup")
-        sessionStorage.setItem("isLoggedIn", "true")
+        // Construct the backup session according to the standard Supabase payload format
+        const backupSession = {
+          access_token: "backup-token",
+          token_type: "bearer",
+          expires_in: 31536000,
+          refresh_token: "backup-refresh-token",
+          user: {
+            id: "admin-backup-id",
+            email: "baloenggedheindonesia@gmail.com",
+            role: "authenticated",
+            aud: "authenticated",
+            app_metadata: {},
+            user_metadata: {},
+            created_at: new Date().toISOString()
+          },
+          expires_at: Math.floor(Date.now() / 1000) + 31536000
+        }
+
+        const sbKey = Object.keys(localStorage).find(key => key.startsWith('sb-') && key.endsWith('-auth-token')) 
+          || `sb-${new URL(import.meta.env.VITE_SUPABASE_URL || "https://placeholder-project.supabase.co").hostname.split('.')[0] || "placeholder"}-auth-token`
+
+        localStorage.setItem(sbKey, JSON.stringify(backupSession))
+
+        setError("")
         onLogin()
         return
       }
@@ -92,6 +98,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   const handleForgotPassword = () => {
     alert("Silakan hubungi administrator IT Baloeng Gedhe untuk mereset password Anda.")
   }
+
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
@@ -155,17 +162,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             />
           </div>
 
-          <div className="flex justify-between items-center text-sm">
-            <label className="flex items-center gap-2 text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="rounded border-slate-300 text-red-600 focus:ring-red-500 h-4 w-4"
-              />
-              Remember Me
-            </label>
-
+          <div className="flex justify-end text-sm">
             <button
               type="button"
               onClick={handleForgotPassword}

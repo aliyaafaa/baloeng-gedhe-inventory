@@ -13,7 +13,7 @@ import NotificationPopup from "./components/NotificationPopup"
 
 import { useApp } from "./context/AppContext"
 import { generateNotifications, AppNotification } from "./utils/notificationUtils"
-import { isSupabaseConfigured } from "./lib/supabase"
+import { isSupabaseConfigured, supabase } from "./lib/supabase"
 
 import {
   LayoutDashboard,
@@ -34,9 +34,53 @@ export default function App() {
   const [activePage, setActivePage] =
     useState("dashboard")
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem("token") !== null || sessionStorage.getItem("isLoggedIn") === "true"
-  })
+  const [user, setUser] = useState<any>(null)
+  const [isInitializing, setIsInitializing] = useState(true)
+
+  const isLoggedIn = !!user
+
+  useEffect(() => {
+    let active = true
+
+    const checkInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session && active) {
+          const { data: { user: currentUser } } = await supabase.auth.getUser()
+          setUser(currentUser || session.user)
+        } else if (active) {
+          setUser(null)
+        }
+      } catch (err) {
+        console.error("Auth session check error:", err)
+        if (active) setUser(null)
+      } finally {
+        if (active) setIsInitializing(false)
+      }
+    }
+
+    checkInitialSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!active) return
+      if (session) {
+        try {
+          const { data: { user: currentUser } } = await supabase.auth.getUser()
+          setUser(currentUser || session.user)
+        } catch (err) {
+          setUser(session.user)
+        }
+      } else {
+        setUser(null)
+      }
+      setIsInitializing(false)
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
 
   const { orders, settings, setSettings, dbNotifications, loadDbNotifications } = useApp()
   const [popupNotif, setPopupNotif] = useState<AppNotification | null>(null)
@@ -54,13 +98,13 @@ export default function App() {
     : generateNotifications(orders)
 
   useEffect(() => {
-    const token = localStorage.getItem("token") || sessionStorage.getItem("isLoggedIn") === "true"
-    if (!token && location.pathname !== "/login") {
+    if (isInitializing) return
+    if (!user && location.pathname !== "/login") {
       navigate("/login")
-    } else if (token && location.pathname === "/login") {
+    } else if (user && location.pathname === "/login") {
       navigate("/")
     }
-  }, [isLoggedIn, location.pathname, navigate])
+  }, [user, isInitializing, location.pathname, navigate])
 
   useEffect(() => {
     if (notifications.length > 0) {
@@ -82,20 +126,26 @@ export default function App() {
     }
   }, [notifications, lastNotifLength])
 
-  const handleLogin = () => {
-    setIsLoggedIn(true)
-    sessionStorage.setItem("isLoggedIn", "true")
-    localStorage.setItem("user", JSON.stringify({ email: "admin@baloenggedhe.com" }))
-    localStorage.setItem("token", "mock-token-123456")
+  const handleLogin = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        setUser(currentUser || session.user)
+      }
+    } catch (e) {
+      console.error(e)
+    }
     navigate("/")
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    sessionStorage.removeItem("isLoggedIn")
-    setIsLoggedIn(false)
-
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch (e) {
+      console.error("Signout error:", e)
+    }
+    setUser(null)
     navigate("/login")
   }
 
@@ -165,6 +215,17 @@ export default function App() {
       default:
         return <DashboardPage />
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-red-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-500 font-medium animate-pulse">Memuat Sesi...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isLoggedIn || location.pathname === "/login") {

@@ -118,6 +118,7 @@ interface AppContextType {
   dbNotifications: any[];
   loadDbNotifications: () => Promise<void>;
   checkDeadlineNotifications: (ordersList?: Order[]) => Promise<void>;
+  updateProductionProgress: (id: number, progress: number) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -372,6 +373,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ================= PRODUKSI ================= */
   const [productionList, setProductionList] = useState<Order[]>([]);
+
+  const updateProductionProgress = async (id: number, progress: number) => {
+    setProductionList((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              progress,
+            }
+          : item
+      )
+    );
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase
+          .from("production_batches")
+          .update({ progress })
+          .eq("id", id);
+      } catch (err) {
+        console.error("Failed to update progress on Supabase:", err);
+      }
+    }
+  };
 
   /* ================= KEUANGAN ================= */
   const [financeData, setFinanceData] = useState<FinanceData>({
@@ -951,6 +976,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dbNotifications,
         loadDbNotifications,
         checkDeadlineNotifications,
+        updateProductionProgress,
       }}
     >
       {children}

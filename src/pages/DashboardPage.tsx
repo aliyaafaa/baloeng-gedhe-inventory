@@ -30,6 +30,14 @@ export default function DashboardPage() {
     return `Rp ${Number(value || 0).toLocaleString("id-ID")}`
   }
 
+  const activeProductions = productionList
+    .filter(
+      (item) =>
+        item.status !== "Selesai" &&
+        item.status !== "Draft"
+    )
+    .slice(0, 5)
+
   return (
 
     <div className="p-6 sm:p-8">
@@ -103,67 +111,102 @@ export default function DashboardPage() {
             border-gray-100
           "
         >
-
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-6">
 
             <h2 className="text-3xl font-bold">
               Status Produksi
             </h2>
 
             <span className="text-gray-400">
-              Live Workflow
+              Menampilkan {Math.min(activeProductions.length, 5)}
+              {" "}dari{" "}
+              {productionList.length}
+              {" "}produksi
             </span>
 
           </div>
 
-          <div className="space-y-8">
+          {activeProductions.length === 0 ? (
 
-            {productionList.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 font-medium">
-                Belum ada order produksi
+            <div className="py-20 text-center">
+
+              <div className="text-5xl mb-4">
+                🏭
               </div>
-            ) : (
-              productionList.map((item) => (
 
-                <div key={item.id}>
+              <p className="text-gray-400 font-medium">
+                Belum ada order produksi aktif
+              </p>
+
+            </div>
+
+          ) : (
+
+            <div
+              className="
+                max-h-[520px]
+                overflow-y-auto
+                pr-2
+                space-y-5
+              "
+            >
+
+              {activeProductions.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="
+                    border
+                    border-gray-100
+                    rounded-2xl
+                    p-4
+                  "
+                >
 
                   <div className="flex justify-between mb-3">
 
-                    <h3 className="font-bold text-xl">
-                      {item.product}
-                    </h3>
+                    <div>
 
-                    <span className="font-semibold">
+                      <h3 className="font-bold text-lg">
+                        {item.product}
+                      </h3>
+
+                      <p className="text-sm text-gray-400">
+                        {item.customer}
+                      </p>
+
+                    </div>
+
+                    <span className="font-bold text-red-700">
                       {item.progress}%
                     </span>
 
                   </div>
 
-                  <div className="w-full h-3 bg-gray-100 rounded-full">
+                  <div className="w-full h-2 bg-gray-100 rounded-full">
 
                     <div
-                      className="h-3 rounded-full bg-red-700"
+                      className="h-2 bg-red-700 rounded-full"
                       style={{
-                        width:
-                          `${item.progress}%`
+                        width: `${item.progress}%`
                       }}
-                    ></div>
+                    />
 
                   </div>
 
-                  <p className="text-gray-400 mt-2 text-sm">
+                  <div className="mt-2 text-sm text-gray-500">
 
                     {item.status}
 
-                  </p>
+                  </div>
 
                 </div>
 
-              ))
-            )}
+              ))}
 
-          </div>
+            </div>
 
+          )}
         </div>
 
         {/* MONITORING */}

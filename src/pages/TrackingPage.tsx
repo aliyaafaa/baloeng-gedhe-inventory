@@ -15,10 +15,11 @@ import bgLogo from "../assets/images/bg_logo_1779866363731.png"
 
 export default function TrackingPage() {
 
-  const { materialDrafts, orders, settings } = useApp()
+  const { materialDrafts, orders, settings, updateProductionProgress } = useApp()
 
   const [searchOrder, setSearchOrder] = useState("")
   const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [showAllOrders, setShowAllOrders] = useState(false)
 
   const productionOrders = orders.filter(
     (order) => order.status !== "Draft"
@@ -33,7 +34,7 @@ export default function TrackingPage() {
     )
   })
 
-  const activeOrder = selectedOrder || filteredOrders[0]
+  const activeOrder = selectedOrder
 
   const getDaysLeft = (deadline?: string) => {
     if (!deadline) return "Belum ditentukan"
@@ -253,6 +254,10 @@ export default function TrackingPage() {
       })
 
     setWorkflowData(updated)
+    const updatedBatch = updated.find(b => b.id === activeOrder.id);
+    if (updatedBatch) {
+      updateProductionProgress(activeOrder.id, updatedBatch.progress);
+    }
     setShowBatchEdit(false)
   }
 
@@ -330,6 +335,10 @@ export default function TrackingPage() {
       })
 
     setWorkflowData(updated)
+    const updatedBatch = updated.find(b => b.id === activeOrder.id);
+    if (updatedBatch) {
+      updateProductionProgress(activeOrder.id, updatedBatch.progress);
+    }
     setShowEditModal(false)
   }
 
@@ -408,9 +417,17 @@ export default function TrackingPage() {
       })
 
     setWorkflowData(updated)
+    const updatedBatch = updated.find(b => b.id === activeOrder.id);
+    if (updatedBatch) {
+      updateProductionProgress(activeOrder.id, updatedBatch.progress);
+    }
   }
 
   const materialProgress = activeOrder ? getMaterialProgress(activeOrder.id) : 0;
+
+  const displayedOrders = showAllOrders
+    ? filteredOrders
+    : filteredOrders.slice(0, 5)
 
   return (
 
@@ -476,7 +493,7 @@ export default function TrackingPage() {
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => {
+                displayedOrders.map((order) => {
                   // Determine current progress
                   const exists = workflowData.find(item => item.id === order.id);
                   const progressToDisplay = exists ? exists.progress : (order.progress || 0);
@@ -557,7 +574,42 @@ export default function TrackingPage() {
             </tbody>
           </table>
         </div>
+        {filteredOrders.length > 5 && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setShowAllOrders(!showAllOrders)}
+              className="
+                px-6
+                py-3
+                rounded-2xl
+                border
+                border-red-200
+                text-red-700
+                font-semibold
+                hover:bg-red-50
+              "
+            >
+              {showAllOrders
+                ? "Tampilkan Lebih Sedikit"
+                : `Tampilkan ${filteredOrders.length - 5} Data Lainnya`}
+            </button>
+          </div>
+        )}
       </div>
+
+      {!selectedOrder && filteredOrders.length > 0 && (
+        <div className="bg-white rounded-3xl border border-gray-200 p-16 text-center mb-6">
+          <div className="text-6xl mb-4">🏭</div>
+
+          <h3 className="text-2xl font-bold text-slate-700">
+            Pilih Order Produksi
+          </h3>
+
+          <p className="text-slate-400 mt-2">
+            Klik tombol Pantau untuk melihat workflow produksi.
+          </p>
+        </div>
+      )}
 
       {/* ================= DETAIL WORKFLOW ================= */}
       {activeOrder ? (
@@ -872,9 +924,11 @@ export default function TrackingPage() {
 
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-gray-200 p-8 text-center text-gray-400">
-          Belum ada order produksi.
-        </div>
+        filteredOrders.length === 0 && (
+          <div className="bg-white rounded-3xl border border-gray-200 p-8 text-center text-gray-400">
+            Belum ada order produksi.
+          </div>
+        )
       )}
 
 

@@ -76,8 +76,366 @@ const ALL_MAIN_MATERIALS = [
   "Packaging Box"
 ]
 
+interface CardPembelanjaanMaterialProps {
+  order: any;
+}
+
+function CardPembelanjaanMaterial({ order }: CardPembelanjaanMaterialProps) {
+  const {
+    materialDrafts,
+    updateMaterialItem,
+    saveMaterialUsageToStock,
+    addMaterialExpense,
+    addOtherMaterialItem,
+    settings,
+  } = useApp()
+
+  const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
+
+  const activeDraft = materialDrafts.find((d) => d.orderId === order.id)
+
+  if (!activeDraft) {
+    return (
+      <div className="py-8 text-center text-slate-400">
+        Draf material untuk order ini tidak ditemukan.
+      </div>
+    )
+  }
+
+  const getProgress = (item: any) => {
+    const need = Number(item.volumeNeed || 0)
+    const bought = Number(item.volumeBought || 0)
+
+    if (need === 0) return 0
+
+    return Math.min(Math.round((bought / need) * 100), 100)
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[1300px]">
+        <thead>
+          <tr className="text-left text-xs uppercase tracking-widest font-black text-gray-400 border-b border-gray-200">
+            <th className="py-4">Kategori</th>
+            <th>Material</th>
+            <th>Detail Material</th>
+            <th>Kebutuhan Total</th>
+            <th>Volume Belanja</th>
+            <th>Harga Satuan</th>
+            <th>Total Belanja</th>
+            <th>Progress</th>
+            <th>Volume Penggunaan</th>
+            <th>Sisa</th>
+          </tr>
+        </thead>
+        <tbody>
+          {activeDraft.items.map((item) => {
+            const progress = getProgress(item)
+            const bought = Number(item.volumeBought || 0)
+            const used = Number(item.volumeUsed || 0)
+            const stockLeft = bought - used
+
+            return (
+              <tr key={item.id} className="border-b border-gray-100">
+                <td className="py-6 font-bold text-slate-700 text-lg">
+                  {item.category}
+                </td>
+                <td>
+                  {item.category === "Lain-lain" ? (
+                    <input
+                      type="text"
+                      value={item.materialName}
+                      onChange={(e) =>
+                        updateMaterialItem(
+                          activeDraft.id,
+                          item.id,
+                          "materialName",
+                          e.target.value
+                        )
+                      }
+                      placeholder="Tulis material lain-lain"
+                      className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                    />
+                  ) : item.category === "Kain" ? (
+                    (() => {
+                      const isManualFabric = manualRows[item.id] || (item.materialName && !FABRIC_OPTIONS.includes(item.materialName))
+                      if (isManualFabric) {
+                        return (
+                          <div className="flex gap-2 items-center min-w-[200px]">
+                            <input
+                              type="text"
+                              value={item.materialName}
+                              onChange={(e) =>
+                                updateMaterialItem(
+                                  activeDraft.id,
+                                  item.id,
+                                  "materialName",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Tulis jenis kain..."
+                              className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
+                            />
+                            <button
+                              onClick={() => {
+                                setManualRows(prev => ({ ...prev, [item.id]: false }))
+                                updateMaterialItem(activeDraft.id, item.id, "materialName", "")
+                              }}
+                              className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
+                            >
+                              Pilih Daftar
+                            </button>
+                          </div>
+                        )
+                      }
+                      return (
+                        <select
+                          value={item.materialName}
+                          onChange={(e) => {
+                            if (e.target.value === "__custom__") {
+                              setManualRows(prev => ({ ...prev, [item.id]: true }))
+                              updateMaterialItem(activeDraft.id, item.id, "materialName", "")
+                            } else {
+                              updateMaterialItem(activeDraft.id, item.id, "materialName", e.target.value)
+                            }
+                          }}
+                          className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="">Pilih Jenis Kain</option>
+                          {FABRIC_OPTIONS.map((material) => (
+                            <option key={material} value={material}>
+                              {material}
+                            </option>
+                          ))}
+                          <option value="__custom__">- Input Manual / Kain Lainnya -</option>
+                        </select>
+                      )
+                    })()
+                  ) : item.category === "Material Utama" ? (
+                    (() => {
+                      const isManualMain = manualRows[item.id] || (item.materialName && !ALL_MAIN_MATERIALS.includes(item.materialName))
+                      if (isManualMain) {
+                        return (
+                          <div className="flex gap-2 items-center min-w-[200px]">
+                            <input
+                              type="text"
+                              value={item.materialName}
+                              onChange={(e) =>
+                                updateMaterialItem(
+                                  activeDraft.id,
+                                  item.id,
+                                  "materialName",
+                                  e.target.value
+                                )
+                              }
+                              placeholder="Tulis material utama..."
+                              className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
+                            />
+                            <button
+                              onClick={() => {
+                                setManualRows(prev => ({ ...prev, [item.id]: false }))
+                                updateMaterialItem(activeDraft.id, item.id, "materialName", "")
+                              }}
+                              className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
+                            >
+                              Pilih Daftar
+                            </button>
+                          </div>
+                        )
+                      }
+                      return (
+                        <select
+                          value={item.materialName}
+                          onChange={(e) => {
+                            if (e.target.value === "__custom__") {
+                              setManualRows(prev => ({ ...prev, [item.id]: true }))
+                              updateMaterialItem(activeDraft.id, item.id, "materialName", "")
+                            } else {
+                              updateMaterialItem(activeDraft.id, item.id, "materialName", e.target.value)
+                            }
+                          }}
+                          className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value="">Pilih Material Utama</option>
+                          {Object.entries(MAIN_MATERIAL_GROUPS).map(([group, options]) => (
+                            <optgroup key={group} label={group}>
+                              {options.map((material) => (
+                                <option key={material} value={material}>
+                                  {material}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                          <option value="__custom__">- Input Manual / Material Baru -</option>
+                        </select>
+                      )
+                    })()
+                  ) : (
+                    <select
+                      value={item.materialName}
+                      onChange={(e) =>
+                        updateMaterialItem(
+                          activeDraft.id,
+                          item.id,
+                          "materialName",
+                          e.target.value
+                        )
+                      }
+                      className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
+                    >
+                      <option value="">Pilih material</option>
+                      {settings.material.fabrics.map((material: string) => (
+                        <option key={material} value={material}>
+                          {material}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={item.materialDetail || ""}
+                    onChange={(e) =>
+                      updateMaterialItem(
+                        activeDraft.id,
+                        item.id,
+                        "materialDetail",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Warna / merk / spesifikasi"
+                    className="w-full max-w-[200px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={item.volumeNeed}
+                    onChange={(e) =>
+                      updateMaterialItem(
+                        activeDraft.id,
+                        item.id,
+                        "volumeNeed",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Contoh: 10"
+                    className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={item.volumeBought}
+                    onChange={(e) =>
+                      updateMaterialItem(
+                        activeDraft.id,
+                        item.id,
+                        "volumeBought",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Contoh: 5"
+                    className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                  />
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={item.price || ""}
+                    onChange={(e) =>
+                      updateMaterialItem(
+                        activeDraft.id,
+                        item.id,
+                        "price",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Harga"
+                    className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                  />
+                </td>
+                <td className="font-bold text-red-700 pr-2 min-w-[120px]">
+                  Rp {(
+                    Number(item.volumeBought || 0) *
+                    Number(item.price || 0)
+                  ).toLocaleString("id-ID")}
+                </td>
+                <td className="pr-4">
+                  <div className="w-full bg-slate-100 rounded-full h-3">
+                    <div
+                      className="bg-red-700 h-3 rounded-full transition-all"
+                      style={{
+                        width: `${progress}%`,
+                      }}
+                    ></div>
+                  </div>
+                  <p className="text-xs text-gray-500 font-bold mt-2">
+                    {progress}% pengadaan
+                  </p>
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    value={item.volumeUsed}
+                    onChange={(e) =>
+                      updateMaterialItem(
+                        activeDraft.id,
+                        item.id,
+                        "volumeUsed",
+                        e.target.value
+                      )
+                    }
+                    placeholder="Contoh: 9"
+                    className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
+                  />
+                </td>
+                <td className="font-bold text-red-700 text-lg">
+                  {stockLeft > 0 ? stockLeft : 0} {item.unit}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+        <button
+          onClick={() => addOtherMaterialItem(activeDraft.id)}
+          className="w-full sm:w-auto px-6 py-4 rounded-2xl border border-gray-200 bg-white font-semibold hover:border-red-700 cursor-pointer"
+        >
+          + Tambah Material Lain-lain
+        </button>
+        <button
+          onClick={() => {
+            activeDraft.items.forEach((item) => {
+              if (item.materialName && item.volumeBought && item.price) {
+                addMaterialExpense({
+                  category: item.category,
+                  materialName: item.materialName,
+                  materialDetail: item.materialDetail,
+                  qty: item.volumeBought,
+                  unit: item.unit,
+                  price: item.price,
+                  sourceOrder: activeDraft.product,
+                  customer: activeDraft.customer,
+                })
+              }
+            })
+            saveMaterialUsageToStock(activeDraft.id)
+          }}
+          className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-red-700 text-white font-semibold cursor-pointer hover:bg-red-850"
+        >
+          Simpan Belanja & Sisa Stok
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function InventoryPage() {
   const {
+    orders,
     materialDrafts,
     updateMaterialItem,
     saveMaterialUsageToStock,
@@ -92,6 +450,7 @@ export default function InventoryPage() {
   const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
   const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
   const [selectedDraft, setSelectedDraft] = useState<number | null>(null)
+  const [selectedMaterialOrder, setSelectedMaterialOrder] = useState<any>(null)
 
   const getProgress = (item: MaterialDraftItem) => {
     const need = Number(item.volumeNeed || 0)
@@ -160,9 +519,7 @@ export default function InventoryPage() {
     }
   }
 
-  const activeDraft = materialDrafts.find(
-    (draft) => draft.id === selectedDraft
-  )
+  const activeOrder = selectedMaterialOrder
 
   console.log("warehouseStock", warehouseStock)
   console.log("materialDrafts", materialDrafts)
@@ -201,13 +558,19 @@ export default function InventoryPage() {
       {/* LIST STOK GUDANG */}
       <div className="bg-white rounded-[32px] border border-gray-200 p-6 sm:p-8 mb-8 shadow-sm">
 
-        <h2 className="text-2xl font-bold mb-6 text-slate-800">
-          Sisa Stok Gudang
-        </h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-slate-800">
+            Sisa Stok Gudang
+          </h2>
 
-        <div className="overflow-x-auto">
+          <span className="text-sm text-slate-500">
+            Menampilkan {Math.min(5, warehouseStock.length)} dari {warehouseStock.length} data
+          </span>
+        </div>
 
-          <table className="w-full">
+        <div className="overflow-y-auto overflow-x-auto max-h-[520px]">
+
+          <table className="w-full min-w-[900px]">
 
             <thead>
               <tr className="border-b border-gray-200 text-left">
@@ -237,14 +600,27 @@ export default function InventoryPage() {
 
             <tbody>
 
-              {warehouseStock.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-gray-400">
-                    Belum ada sisa material yang masuk ke stok gudang.
-                  </td>
-                </tr>
-              ) : (
-                warehouseStock.map((s) => {
+              {warehouseStock
+                .filter((s) => {
+                  const draftObj = materialDrafts.find(
+                    (d) =>
+                      d.product === s.sourceOrder ||
+                      d.product === s.materialName
+                  )
+
+                  const customer = draftObj?.customer || ""
+
+                  return (
+                    customer
+                      .toLowerCase()
+                      .includes(searchDraft.toLowerCase()) ||
+                    s.materialName
+                      .toLowerCase()
+                      .includes(searchDraft.toLowerCase())
+                  )
+                })
+                .slice(0, 5)
+                .map((s) => {
                   const draftObj =
                     materialDrafts.find(
                       (d) =>
@@ -262,6 +638,8 @@ export default function InventoryPage() {
                   const stock = {
                     ...s,
                     customerName: draftObj?.customer || "Tidak ditemukan",
+                    customer: draftObj?.customer || "Tidak ditemukan",
+                    product: draftObj?.product || s.sourceOrder || s.materialName,
                     draftId: draftObj?.id || null
                   }
 
@@ -291,11 +669,17 @@ export default function InventoryPage() {
 
                         <button
                           onClick={() => {
-                            console.log("Stock:", stock)
-                            console.log("Draft:", draftObj)
+                            const order = orders.find(
+                              (o) =>
+                                (o.customer_name === stock.customer || o.customer === stock.customer) &&
+                                (o.product_name === stock.product || o.product === stock.product)
+                            ) || orders.find(
+                              (o) =>
+                                o.id === draftObj?.orderId
+                            )
 
-                            if (stock.draftId) {
-                              setSelectedDraft(stock.draftId)
+                            if (order) {
+                              setSelectedMaterialOrder(order)
 
                               setTimeout(() => {
                                 document
@@ -307,7 +691,7 @@ export default function InventoryPage() {
                               }, 100)
                             }
                           }}
-                          className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold"
+                          className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-800 transition-all text-xs cursor-pointer whitespace-nowrap"
                         >
                           Kelola Material
                         </button>
@@ -316,8 +700,7 @@ export default function InventoryPage() {
 
                     </tr>
                   );
-                })
-              )}
+                })}
 
             </tbody>
 
@@ -330,7 +713,7 @@ export default function InventoryPage() {
       {/* DRAFT MATERIAL */}
       <div className="space-y-6">
 
-        {activeDraft && (
+        {activeOrder && (
           <div id="material-section" className="bg-white rounded-[32px] border border-gray-200 p-8 mt-8 shadow-sm">
 
             <div className="flex justify-between items-start mb-8">
@@ -341,20 +724,20 @@ export default function InventoryPage() {
                 </p>
 
                 <h2 className="text-4xl font-bold mt-2 text-slate-800">
-                  {activeDraft.product}
+                  {activeOrder?.product_name || activeOrder?.product}
                 </h2>
 
                 <p className="text-slate-500 mt-2 font-medium">
-                  Customer: {activeDraft.customer}
+                  Customer: {activeOrder?.customer_name || activeOrder?.customer}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <span className="px-6 py-3 rounded-full bg-yellow-100 text-yellow-700 font-semibold text-xs uppercase tracking-wider">
-                  {activeDraft.status}
+                  {activeOrder?.status}
                 </span>
                 <button
-                  onClick={() => setSelectedDraft(null)}
+                  onClick={() => setSelectedMaterialOrder(null)}
                   className="border px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-50 border-slate-200 text-slate-600 transition-all cursor-pointer"
                 >
                   Tutup
@@ -363,349 +746,11 @@ export default function InventoryPage() {
 
             </div>
 
-            <div className="overflow-x-auto">
-
-              <table className="w-full min-w-[1300px]">
-
-                <thead>
-                  <tr className="text-left text-xs uppercase tracking-widest font-black text-gray-400 border-b border-gray-200">
-                    <th className="py-4">Kategori</th>
-                    <th>Material</th>
-                    <th>Detail Material</th>
-                    <th>Kebutuhan Total</th>
-                    <th>Volume Belanja</th>
-                    <th>Harga Satuan</th>
-                    <th>Total Belanja</th>
-                    <th>Progress</th>
-                    <th>Volume Penggunaan</th>
-                    <th>Sisa</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {activeDraft.items.map((item) => {
-                    const progress = getProgress(item)
-                    const bought = Number(item.volumeBought || 0)
-                    const used = Number(item.volumeUsed || 0)
-                    const stockLeft = bought - used
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className="border-b border-gray-100"
-                      >
-
-                        <td className="py-6 font-bold text-slate-700 text-lg">
-                          {item.category}
-                        </td>
-
-                        <td>
-                          {item.category === "Lain-lain" ? (
-                            <input
-                              type="text"
-                              value={item.materialName}
-                              onChange={(e) =>
-                                updateMaterialItem(
-                                  activeDraft.id,
-                                  item.id,
-                                  "materialName",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Tulis material lain-lain"
-                              className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
-                            />
-                          ) : item.category === "Kain" ? (
-                            (() => {
-                              const isManualFabric = manualRows[item.id] || (item.materialName && !FABRIC_OPTIONS.includes(item.materialName))
-                              if (isManualFabric) {
-                                return (
-                                  <div className="flex gap-2 items-center min-w-[200px]">
-                                    <input
-                                      type="text"
-                                      value={item.materialName}
-                                      onChange={(e) =>
-                                        updateMaterialItem(
-                                          activeDraft.id,
-                                          item.id,
-                                          "materialName",
-                                          e.target.value
-                                        )
-                                      }
-                                      placeholder="Tulis jenis kain..."
-                                      className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
-                                    />
-                                    <button
-                                      onClick={() => {
-                                        setManualRows(prev => ({ ...prev, [item.id]: false }))
-                                        updateMaterialItem(activeDraft.id, item.id, "materialName", "")
-                                      }}
-                                      className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
-                                    >
-                                      Pilih Daftar
-                                    </button>
-                                  </div>
-                                )
-                              }
-                              return (
-                                <select
-                                  value={item.materialName}
-                                  onChange={(e) => {
-                                    if (e.target.value === "__custom__") {
-                                      setManualRows(prev => ({ ...prev, [item.id]: true }))
-                                      updateMaterialItem(activeDraft.id, item.id, "materialName", "")
-                                    } else {
-                                      updateMaterialItem(activeDraft.id, item.id, "materialName", e.target.value)
-                                    }
-                                  }}
-                                  className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
-                                >
-                                  <option value="">Pilih Jenis Kain</option>
-                                  {FABRIC_OPTIONS.map((material) => (
-                                    <option key={material} value={material}>
-                                      {material}
-                                    </option>
-                                  ))}
-                                  <option value="__custom__">- Input Manual / Kain Lainnya -</option>
-                                </select>
-                              )
-                            })()
-                          ) : item.category === "Material Utama" ? (
-                            (() => {
-                              const isManualMain = manualRows[item.id] || (item.materialName && !ALL_MAIN_MATERIALS.includes(item.materialName))
-                              if (isManualMain) {
-                                return (
-                                  <div className="flex gap-2 items-center min-w-[200px]">
-                                    <input
-                                      type="text"
-                                      value={item.materialName}
-                                      onChange={(e) =>
-                                        updateMaterialItem(
-                                          activeDraft.id,
-                                          item.id,
-                                          "materialName",
-                                          e.target.value
-                                        )
-                                      }
-                                      placeholder="Tulis material utama..."
-                                      className="w-full border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-red-600"
-                                    />
-                                    <button
-                                      onClick={() => {
-                                        setManualRows(prev => ({ ...prev, [item.id]: false }))
-                                        updateMaterialItem(activeDraft.id, item.id, "materialName", "")
-                                      }}
-                                      className="text-xs text-red-600 hover:underline font-bold whitespace-nowrap px-1 cursor-pointer"
-                                    >
-                                      Pilih Daftar
-                                    </button>
-                                  </div>
-                                )
-                              }
-                              return (
-                                <select
-                                  value={item.materialName}
-                                  onChange={(e) => {
-                                    if (e.target.value === "__custom__") {
-                                      setManualRows(prev => ({ ...prev, [item.id]: true }))
-                                      updateMaterialItem(activeDraft.id, item.id, "materialName", "")
-                                    } else {
-                                      updateMaterialItem(activeDraft.id, item.id, "materialName", e.target.value)
-                                    }
-                                  }}
-                                  className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
-                                >
-                                  <option value="">Pilih Material Utama</option>
-                                  {Object.entries(MAIN_MATERIAL_GROUPS).map(([group, options]) => (
-                                    <optgroup key={group} label={group}>
-                                      {options.map((material) => (
-                                        <option key={material} value={material}>
-                                          {material}
-                                        </option>
-                                      ))}
-                                    </optgroup>
-                                  ))}
-                                  <option value="__custom__">- Input Manual / Material Baru -</option>
-                                </select>
-                              )
-                            })()
-                          ) : (
-                            <select
-                              value={item.materialName}
-                              onChange={(e) =>
-                                updateMaterialItem(
-                                  activeDraft.id,
-                                  item.id,
-                                  "materialName",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full min-w-[200px] border border-gray-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none cursor-pointer"
-                            >
-                              <option value="">Pilih material</option>
-                              {settings.material.fabrics.map((material: string) => (
-                                <option key={material} value={material}>
-                                  {material}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </td>
-
-                        <td>
-                          <input
-                            type="text"
-                            value={item.materialDetail || ""}
-                            onChange={(e) =>
-                              updateMaterialItem(
-                                activeDraft.id,
-                                item.id,
-                                "materialDetail",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Warna / merk / spesifikasi"
-                            className="w-full max-w-[200px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          />
-                        </td>
-
-                        <td>
-                          <input
-                            type="number"
-                            value={item.volumeNeed}
-                            onChange={(e) =>
-                              updateMaterialItem(
-                                activeDraft.id,
-                                item.id,
-                                "volumeNeed",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Contoh: 10"
-                            className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
-                          />
-                        </td>
-
-                        <td>
-                          <input
-                            type="number"
-                            value={item.volumeBought}
-                            onChange={(e) =>
-                              updateMaterialItem(
-                                activeDraft.id,
-                                item.id,
-                                "volumeBought",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Contoh: 5"
-                            className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
-                          />
-                        </td>
-
-                        <td>
-                          <input
-                            type="number"
-                            value={item.price || ""}
-                            onChange={(e) =>
-                              updateMaterialItem(
-                                activeDraft.id,
-                                item.id,
-                                "price",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Harga"
-                            className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
-                          />
-                        </td>
-
-                        <td className="font-bold text-red-700 pr-2 min-w-[120px]">
-                          Rp {(
-                            Number(item.volumeBought || 0) *
-                            Number(item.price || 0)
-                          ).toLocaleString("id-ID")}
-                        </td>
-
-                        <td className="pr-4">
-                          <div className="w-full bg-slate-100 rounded-full h-3">
-                            <div
-                              className="bg-red-700 h-3 rounded-full transition-all"
-                              style={{
-                                width: `${progress}%`,
-                              }}
-                            ></div>
-                          </div>
-
-                          <p className="text-xs text-gray-500 font-bold mt-2">
-                            {progress}% pengadaan
-                          </p>
-                        </td>
-
-                        <td>
-                          <input
-                            type="number"
-                            value={item.volumeUsed}
-                            onChange={(e) =>
-                              updateMaterialItem(
-                                activeDraft.id,
-                                item.id,
-                                "volumeUsed",
-                                e.target.value
-                              )
-                            }
-                            placeholder="Contoh: 9"
-                            className="w-full max-w-[120px] bg-slate-50 border border-slate-200 rounded-xl p-3 font-semibold text-slate-800 focus:outline-none"
-                          />
-                        </td>
-
-                        <td className="font-bold text-red-700 text-lg">
-                          {stockLeft > 0 ? stockLeft : 0} {item.unit}
-                        </td>
-
-                      </tr>
-                    )
-                  })}
-                </tbody>
-
-              </table>
-
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
-
-              <button
-                onClick={() => addOtherMaterialItem(activeDraft.id)}
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl border border-gray-200 bg-white font-semibold hover:border-red-700 cursor-pointer"
-              >
-                + Tambah Material Lain-lain
-              </button>
-
-              <button
-                onClick={() => {
-                  activeDraft.items.forEach((item) => {
-                    if (item.materialName && item.volumeBought && item.price) {
-                      addMaterialExpense({
-                        category: item.category,
-                        materialName: item.materialName,
-                        materialDetail: item.materialDetail,
-                        qty: item.volumeBought,
-                        unit: item.unit,
-                        price: item.price,
-                        sourceOrder: activeDraft.product,
-                        customer: activeDraft.customer,
-                      })
-                    }
-                  })
-
-                  saveMaterialUsageToStock(activeDraft.id)
-                }}
-                className="w-full sm:w-auto px-6 py-4 rounded-2xl bg-red-700 text-white font-semibold cursor-pointer hover:bg-red-850"
-              >
-                Simpan Belanja & Sisa Stok
-              </button>
-
-            </div>
+            {selectedMaterialOrder && (
+              <CardPembelanjaanMaterial
+                order={selectedMaterialOrder}
+              />
+            )}
 
           </div>
         )}

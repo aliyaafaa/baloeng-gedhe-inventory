@@ -91,6 +91,7 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState("Semua")
   const [selectedStockId, setSelectedStockId] = useState<number | null>(null)
   const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
+  const [selectedDraft, setSelectedDraft] = useState<string | null>(null)
 
   const getProgress = (item: MaterialDraftItem) => {
     const need = Number(item.volumeNeed || 0)
@@ -159,6 +160,11 @@ export default function InventoryPage() {
     }
   }
 
+  const selectedMaterialDraft =
+    filteredDrafts.find(
+      (draft) => draft.product === selectedDraft
+    ) || null
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
 
@@ -204,108 +210,118 @@ export default function InventoryPage() {
 
       </div>
 
-      {/* STOK GUDANG */}
+      {/* LIST STOK GUDANG */}
       <div className="bg-white rounded-[32px] border border-gray-200 p-6 sm:p-8 mb-8 shadow-sm">
 
-
-        <h2 className="text-2xl font-bold mb-5 text-slate-800">
+        <h2 className="text-2xl font-bold mb-6 text-slate-800">
           Sisa Stok Gudang
         </h2>
 
-        {warehouseStock.length === 0 ? (
-          <p className="text-gray-400">
-            Belum ada sisa material yang masuk ke stok gudang.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {warehouseStock.map((stock) => {
-              const isSelected = selectedStockId === stock.id
-              return (
-                <div
-                  key={stock.id}
-                  onClick={() => handleStockCardClick(stock)}
-                  className={`rounded-3xl p-5 transition-all cursor-pointer ${
-                    isSelected
-                      ? "border-2 border-[#dc2626] shadow-[0_0_10px_rgba(220,38,38,0.2)] bg-red-50/20"
-                      : "bg-slate-50 border border-slate-100 hover:border-red-300"
-                  }`}
-                >
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    {stock.category}
-                  </p>
+        <div className="overflow-x-auto">
 
-                  <h3 className="font-bold text-xl mt-2 text-slate-800">
-                    {stock.materialName}
-                  </h3>
+          <table className="w-full">
 
-                  <p className="text-red-700 font-bold text-lg mt-3">
-                    {stock.stockLeft} {stock.unit}
-                  </p>
+            <thead>
+              <tr className="border-b border-gray-200 text-left">
 
-                  <p className="text-xs text-slate-400 mt-2">
-                    Dari order: {stock.sourceOrder}
-                  </p>
+                <th className="py-4 text-xs uppercase tracking-widest text-slate-400">
+                  Produk
+                </th>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleStockCardClick(stock)
-                    }}
-                    className="mt-4 w-full bg-red-700 hover:bg-red-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-center flex items-center justify-center gap-1 cursor-pointer"
+                <th className="text-xs uppercase tracking-widest text-slate-400">
+                  Material
+                </th>
+
+                <th className="text-xs uppercase tracking-widest text-slate-400">
+                  Sisa Stok
+                </th>
+
+                <th className="text-xs uppercase tracking-widest text-slate-400">
+                  Satuan
+                </th>
+
+                <th className="text-xs uppercase tracking-widest text-slate-400">
+                  Aksi
+                </th>
+
+              </tr>
+            </thead>
+
+            <tbody>
+
+              {warehouseStock.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-gray-400">
+                    Belum ada sisa material yang masuk ke stok gudang.
+                  </td>
+                </tr>
+              ) : (
+                warehouseStock.map((stock) => (
+
+                  <tr
+                    key={stock.id}
+                    className="border-b border-slate-100"
                   >
-                    Kelola Material
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        )}
+
+                    <td className="py-5 font-semibold text-slate-800 text-sm">
+                      {stock.sourceOrder}
+                    </td>
+
+                    <td className="text-slate-700 text-sm">
+                      {stock.materialName}
+                    </td>
+
+                    <td className="font-bold text-red-700 text-sm">
+                      {stock.stockLeft}
+                    </td>
+
+                    <td className="text-slate-600 text-sm">
+                      {stock.unit}
+                    </td>
+
+                    <td>
+
+                      <button
+                        onClick={() => setSelectedDraft(stock.sourceOrder)}
+                        className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-800 transition-all text-xs cursor-pointer whitespace-nowrap"
+                      >
+                        Kelola Material
+                      </button>
+
+                    </td>
+
+                  </tr>
+
+                ))
+              )}
+
+            </tbody>
+
+          </table>
+
+        </div>
 
       </div>
 
-      {/* QUICK SECTION NAVIGATION */}
-      {filteredDrafts.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 text-slate-800">
-            Pintasan Draf Material ({filteredDrafts.length})
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {filteredDrafts.map((draft) => (
-              <button
-                key={draft.id}
-                onClick={() =>
-                  document
-                    .getElementById(`draft-${draft.id}`)
-                    ?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    })
-                }
-                className="bg-white border border-gray-200 rounded-3xl p-5 text-left hover:border-red-700 hover:shadow-md transition-all duration-200 cursor-pointer"
-              >
-                <p className="text-xs uppercase tracking-widest text-gray-400 font-bold">
-                  Order #{draft.orderId}
-                </p>
-
-                <h3 className="font-bold text-xl mt-2 text-slate-800">
-                  {draft.product}
-                </h3>
-
-                <p className="text-gray-500 mt-1 text-sm font-medium">
-                  {draft.customer}
-                </p>
-
-                <span className="inline-block mt-4 px-3 py-1.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold uppercase tracking-wider">
-                  {draft.status}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* DRAFT MATERIAL */}
       <div className="space-y-6">
+
+        {selectedDraft && (
+          <div className="flex items-center justify-between bg-red-50/50 border border-red-200 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-red-700 font-black uppercase tracking-wider">Melihat Material:</span>
+              <span className="text-sm font-bold text-slate-800 bg-white border border-slate-200 px-4 py-2 rounded-2xl shadow-sm">
+                {selectedDraft}
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedDraft(null)}
+              className="text-xs font-black text-red-700 hover:text-red-900 border border-red-200 hover:bg-red-50 bg-white px-4 py-2 rounded-2xl transition-all cursor-pointer shadow-sm"
+            >
+              Reset Filter / Tampilkan Semua
+            </button>
+          </div>
+        )}
 
         {filteredDrafts.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-gray-200 p-12 text-center shadow-sm">
@@ -314,7 +330,13 @@ export default function InventoryPage() {
             </p>
           </div>
         ) : (
-          filteredDrafts.map((draft) => {
+          filteredDrafts
+            .filter(
+              (draft) =>
+                selectedDraft === null ||
+                draft.product === selectedDraft
+            )
+            .map((draft) => {
             const isHighlightedDraft = selectedStockId
               ? (() => {
                   const stockItem = warehouseStock.find((s) => s.id === selectedStockId)

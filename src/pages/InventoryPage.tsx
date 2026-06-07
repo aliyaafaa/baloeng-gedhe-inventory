@@ -164,6 +164,9 @@ export default function InventoryPage() {
     (draft) => draft.id === selectedDraft
   )
 
+  console.log("warehouseStock", warehouseStock)
+  console.log("materialDrafts", materialDrafts)
+
   return (
     <div className="p-4 sm:p-6 lg:p-8">
 
@@ -242,11 +245,25 @@ export default function InventoryPage() {
                 </tr>
               ) : (
                 warehouseStock.map((s) => {
-                  const draftObj = materialDrafts.find((d) => d.product === s.sourceOrder);
+                  const draftObj =
+                    materialDrafts.find(
+                      (d) =>
+                        d.product === s.materialName
+                    ) ||
+                    materialDrafts.find(
+                      (d) =>
+                        d.product
+                          .toLowerCase()
+                          .includes(
+                            s.materialName.toLowerCase()
+                          )
+                    )
+
                   const stock = {
                     ...s,
-                    customerName: draftObj ? draftObj.customer : "-"
-                  };
+                    customerName: draftObj?.customer || "Tidak ditemukan",
+                    draftId: draftObj?.id || null
+                  }
 
                   return (
                     <tr
@@ -274,10 +291,23 @@ export default function InventoryPage() {
 
                         <button
                           onClick={() => {
-                            const matchingDraft = materialDrafts.find((d) => d.product === stock.sourceOrder);
-                            setSelectedDraft(matchingDraft ? matchingDraft.id : stock.id);
+                            console.log("Stock:", stock)
+                            console.log("Draft:", draftObj)
+
+                            if (stock.draftId) {
+                              setSelectedDraft(stock.draftId)
+
+                              setTimeout(() => {
+                                document
+                                  .getElementById("material-section")
+                                  ?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start"
+                                  })
+                              }, 100)
+                            }
                           }}
-                          className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold hover:bg-red-800 transition-all text-xs cursor-pointer whitespace-nowrap"
+                          className="bg-red-700 text-white px-5 py-2 rounded-xl font-semibold"
                         >
                           Kelola Material
                         </button>
@@ -301,7 +331,7 @@ export default function InventoryPage() {
       <div className="space-y-6">
 
         {activeDraft && (
-          <div className="bg-white rounded-[32px] border border-gray-200 p-8 mt-8 shadow-sm">
+          <div id="material-section" className="bg-white rounded-[32px] border border-gray-200 p-8 mt-8 shadow-sm">
 
             <div className="flex justify-between items-start mb-8">
 

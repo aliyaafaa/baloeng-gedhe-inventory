@@ -451,6 +451,7 @@ export default function InventoryPage() {
   const [manualRows, setManualRows] = useState<Record<number, boolean>>({})
   const [selectedDraft, setSelectedDraft] = useState<number | null>(null)
   const [selectedMaterialOrder, setSelectedMaterialOrder] = useState<any>(null)
+  const [visibleRows, setVisibleRows] = useState(5)
 
   const getProgress = (item: MaterialDraftItem) => {
     const need = Number(item.volumeNeed || 0)
@@ -486,6 +487,25 @@ export default function InventoryPage() {
     }
 
     return matchesSearch && matchesStatus
+  })
+
+  const filteredWarehouseStock = warehouseStock.filter((s) => {
+    const draftObj = materialDrafts.find(
+      (d) =>
+        d.product === s.sourceOrder ||
+        d.product === s.materialName
+    )
+
+    const customer = draftObj?.customer || ""
+
+    return (
+      customer
+        .toLowerCase()
+        .includes(searchDraft.toLowerCase()) ||
+      s.materialName
+        .toLowerCase()
+        .includes(searchDraft.toLowerCase())
+    )
   })
 
   // Smooth scroll and load related order material data
@@ -564,11 +584,11 @@ export default function InventoryPage() {
           </h2>
 
           <span className="text-sm text-slate-500">
-            Menampilkan {Math.min(5, warehouseStock.length)} dari {warehouseStock.length} data
+            Menampilkan {Math.min(visibleRows, filteredWarehouseStock.length)} dari {filteredWarehouseStock.length} data
           </span>
         </div>
 
-        <div className="overflow-y-auto overflow-x-auto max-h-[520px]">
+        <div className="overflow-y-auto overflow-x-auto" style={{ maxHeight: "420px" }}>
 
           <table className="w-full min-w-[900px]">
 
@@ -600,26 +620,8 @@ export default function InventoryPage() {
 
             <tbody>
 
-              {warehouseStock
-                .filter((s) => {
-                  const draftObj = materialDrafts.find(
-                    (d) =>
-                      d.product === s.sourceOrder ||
-                      d.product === s.materialName
-                  )
-
-                  const customer = draftObj?.customer || ""
-
-                  return (
-                    customer
-                      .toLowerCase()
-                      .includes(searchDraft.toLowerCase()) ||
-                    s.materialName
-                      .toLowerCase()
-                      .includes(searchDraft.toLowerCase())
-                  )
-                })
-                .slice(0, 5)
+              {filteredWarehouseStock
+                .slice(0, visibleRows)
                 .map((s) => {
                   const draftObj =
                     materialDrafts.find(
@@ -707,6 +709,17 @@ export default function InventoryPage() {
           </table>
 
         </div>
+
+        {filteredWarehouseStock.length > visibleRows && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setVisibleRows((prev) => prev + 5)}
+              className="bg-red-700 hover:bg-red-850 text-white font-semibold py-3 px-6 rounded-2xl text-sm transition-all cursor-pointer whitespace-nowrap shadow-sm"
+            >
+              Tampilkan Lebih Banyak
+            </button>
+          </div>
+        )}
 
       </div>
 

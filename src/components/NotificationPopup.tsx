@@ -1,5 +1,6 @@
 import { X, Bell } from "lucide-react"
 import { AppNotification } from "../utils/notificationUtils"
+import { supabase } from "../lib/supabase"
 
 interface NotificationPopupProps {
   notification: AppNotification | null
@@ -8,6 +9,17 @@ interface NotificationPopupProps {
 
 export default function NotificationPopup({ notification, onClose }: NotificationPopupProps) {
   if (!notification) return null
+
+  const handleClose = async () => {
+    await supabase
+      .from("notifications")
+      .update({
+        is_read: true
+      })
+      .eq("id", notification.id);
+
+    onClose();
+  };
 
   return (
     <div
@@ -27,7 +39,7 @@ export default function NotificationPopup({ notification, onClose }: Notificatio
         </div>
 
         <button
-          onClick={onClose}
+          onClick={handleClose}
           id={`notification-popup-close-btn-${notification.id}`}
           className="text-gray-400 hover:text-slate-900"
           aria-label="Close notification"

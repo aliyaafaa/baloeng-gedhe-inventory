@@ -115,6 +115,9 @@ interface AppContextType {
   addOtherMaterialItem: (draftId: number) => void;
   settings: typeof defaultSettings;
   setSettings: React.Dispatch<React.SetStateAction<typeof defaultSettings>>;
+  dbNotifications: any[];
+  loadDbNotifications: () => Promise<void>;
+  checkDeadlineNotifications: (ordersList?: Order[]) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -348,6 +351,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         profit: computedIncome - totalExpense
       });
 
+      // 6. Manage database notifications
+      if (isSupabaseConfigured()) {
+        try {
+          await checkDeadlineNotifications(parsedOrders);
+          await loadDbNotifications();
+        } catch (notifErrComp) {
+          console.error("Failed to run check/load notifications:", notifErrComp);
+        }
+      }
+
     } catch (err) {
       console.error("Error loading multiple tables from Supabase:", err);
     }
@@ -372,6 +385,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   /* ================= SETTINGS ================= */
   const [settings, setSettings] = useState<typeof defaultSettings>(defaultSettings);
+
+  /* ================= NOTIFIKASI DATABASE ================= */
+  const [dbNotifications, setDbNotifications] = useState<any[]>([]);
+
+  const loadDbNotifications = async () => {
+    if (!isSupabaseConfigured()) return;
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("is_read", false)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setDbNotifications(data);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications from Supabase:", err);
+    }
+  };
+
+  const checkDeadlineNotifications = async (ordersList?: Order[]) => {
+    if (!isSupabaseConfigured()) return;
+    const today = new Date();
+    const listToCheck = ordersList || orders;
+
+    listToCheck.forEach(async (order) => {
+      if (!order.deadline) return;
+
+      const deadline = new Date(order.deadline);
+
+      const diffDays = Math.ceil(
+        (deadline.getTime() - today.getTime()) /
+        (1000 * 60 * 60 * 24)
+      );
+
+      if (diffDays === 3) {
+        try {
+          const { data: existing } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("type", "deadline")
+            .eq("order_id", order.id);
+
+          if (!existing || existing.length === 0) {
+            await supabase
+              .from("notifications")
+              .insert([
+                {
+                  type: "deadline",
+                  order_id: order.id,
+                  title: "Reminder Deadline Produksi",
+                  message: `${order.product} milik ${order.customer} deadline 3 hari lagi`,
+                  is_read: false,
+                  created_at: new Date().toISOString()
+                }
+              ]);
+          }
+        } catch (err) {
+          console.error("Failed to insert/check deadline notification:", err);
+        }
+      }
+    });
+  };
 
   /* ================= PENYALURAN MATERIAL ================= */
   const [materialDrafts, setMaterialDrafts] = useState<MaterialDraft[]>([]);
@@ -826,11 +902,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         // Keep dynamic notifications aligned with database structure
         try {
           await supabase
-            .from('notifications')
+            .from("notifications")
             .insert([
               {
-                title: 'Order Baru',
-                message: `${order.customer}\n membuat order`
+                type: "order",
+                order_id: data?.[0]?.id,
+                title: "Order POS Baru Masuk",
+                message: `${order.customer} membuat order ${order.product}`,
+                is_read: false,
+                created_at: new Date().toISOString()
               }
             ]);
         } catch (nErr) {
@@ -868,6 +948,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addOtherMaterialItem,
         settings,
         setSettings,
+        dbNotifications,
+        loadDbNotifications,
+        checkDeadlineNotifications,
       }}
     >
       {children}

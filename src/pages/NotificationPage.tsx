@@ -1,13 +1,25 @@
 import { Bell, Clock, ShoppingCart, AlertTriangle } from "lucide-react"
 import { generateNotifications } from "../utils/notificationUtils"
-import { Order } from "../context/AppContext"
+import { Order, useApp } from "../context/AppContext"
+import { isSupabaseConfigured } from "../lib/supabase"
 
 interface NotificationPageProps {
   orders: Order[]
 }
 
 export default function NotificationPage({ orders = [] }: NotificationPageProps) {
-  const notifications = generateNotifications(orders)
+  const { dbNotifications } = useApp()
+
+  const notifications = isSupabaseConfigured()
+    ? dbNotifications.map((n: any) => ({
+        id: n.id,
+        type: n.type || "order",
+        title: n.title || "Notifikasi",
+        message: n.message || "",
+        time: n.created_at || new Date().toISOString(),
+        isRead: n.is_read || false,
+      }))
+    : generateNotifications(orders)
 
   const getIcon = (type: "order" | "deadline" | "late") => {
     if (type === "order") return <ShoppingCart size={20} />

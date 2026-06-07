@@ -13,6 +13,7 @@ import NotificationPopup from "./components/NotificationPopup"
 
 import { useApp } from "./context/AppContext"
 import { generateNotifications, AppNotification } from "./utils/notificationUtils"
+import { isSupabaseConfigured } from "./lib/supabase"
 
 import {
   LayoutDashboard,
@@ -37,10 +38,20 @@ export default function App() {
     return localStorage.getItem("token") !== null || sessionStorage.getItem("isLoggedIn") === "true"
   })
 
-  const { orders, settings, setSettings } = useApp()
+  const { orders, settings, setSettings, dbNotifications, loadDbNotifications } = useApp()
   const [popupNotif, setPopupNotif] = useState<AppNotification | null>(null)
-  const [lastOrdersLength, setLastOrdersLength] = useState(orders.length)
-  const notifications = generateNotifications(orders)
+  const [lastNotifLength, setLastNotifLength] = useState(0)
+
+  const notifications: AppNotification[] = isSupabaseConfigured()
+    ? dbNotifications.map((n: any) => ({
+        id: n.id,
+        type: n.type || "order",
+        title: n.title || "Notifikasi",
+        message: n.message || "",
+        time: n.created_at || new Date().toISOString(),
+        isRead: n.is_read || false,
+      }))
+    : generateNotifications(orders)
 
   useEffect(() => {
     const token = localStorage.getItem("token") || sessionStorage.getItem("isLoggedIn") === "true"
@@ -52,18 +63,16 @@ export default function App() {
   }, [isLoggedIn, location.pathname, navigate])
 
   useEffect(() => {
-    const freshNotifications = generateNotifications(orders)
-
-    if (freshNotifications.length > 0) {
-      // Only trigger popup for genuinely new orders or status updates, avoiding initial load spam
-      if (orders.length > lastOrdersLength) {
-        setPopupNotif(freshNotifications[freshNotifications.length - 1])
-      } else if (lastOrdersLength === 0) {
-        // Fallback for first initialization if needed
-        setPopupNotif(freshNotifications[freshNotifications.length - 1])
+    if (notifications.length > 0) {
+      if (notifications.length > lastNotifLength) {
+        // Trigger popup on new notification
+        setPopupNotif(notifications[0])
+      } else if (lastNotifLength === 0) {
+        // First load fallback
+        setPopupNotif(notifications[0])
       }
 
-      setLastOrdersLength(orders.length)
+      setLastNotifLength(notifications.length)
 
       const timer = setTimeout(() => {
         setPopupNotif(null)
@@ -71,7 +80,7 @@ export default function App() {
 
       return () => clearTimeout(timer)
     }
-  }, [orders, lastOrdersLength])
+  }, [notifications, lastNotifLength])
 
   const handleLogin = () => {
     setIsLoggedIn(true)
@@ -313,7 +322,10 @@ export default function App() {
 
       <NotificationPopup
         notification={popupNotif}
-        onClose={() => setPopupNotif(null)}
+        onClose={async () => {
+          setPopupNotif(null)
+          await loadDbNotifications()
+        }}
       />
 
     </div>

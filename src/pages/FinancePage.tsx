@@ -30,7 +30,10 @@ export default function FinancePage() {
   } = useApp()
 
   const [yearFilter, setYearFilter] = useState("2026")
+  const [monthFilter, setMonthFilter] = useState("Juni")
   const [showExportModal, setShowExportModal] = useState(false)
+  const [showAllExpenses, setShowAllExpenses] = useState(false)
+  const [showAllIncome, setShowAllIncome] = useState(false)
 
   const totalIncome = orders.reduce(
     (sum, order) => sum + Number(order.total || 0),
@@ -47,38 +50,52 @@ export default function FinancePage() {
   const transactionCount =
     orders.length + expenseRecords.length
 
-  const chartData = [
-    {
-      month: "Jan",
-      income: 0,
-      expense: 0,
-    },
-    {
-      month: "Feb",
-      income: 0,
-      expense: 0,
-    },
-    {
-      month: "Mar",
-      income: 0,
-      expense: 0,
-    },
-    {
-      month: "Apr",
-      income: 0,
-      expense: 0,
-    },
-    {
-      month: "Mei",
-      income: totalIncome,
-      expense: totalExpense,
-    },
-    {
-      month: "Jun",
-      income: 0,
-      expense: 0,
-    },
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Agu",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des"
   ]
+
+  const chartData = monthNames.map((month) => ({
+    month,
+    income: 0,
+    expense: 0,
+  }))
+
+  orders.forEach((order) => {
+    const orderDate = new Date(
+      order.created_at || order.createdAt
+    )
+
+    const monthIndex = orderDate.getMonth()
+
+    if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex < 12) {
+      chartData[monthIndex].income += Number(
+        order.total || 0
+      )
+    }
+  })
+
+  expenseRecords.forEach((expense) => {
+    const expenseDate = new Date(expense.date)
+
+    const monthIndex = expenseDate.getMonth()
+
+    if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex < 12) {
+      chartData[monthIndex].expense += Number(
+        expense.total || 0
+      )
+    }
+  })
 
   const generateFinancePDF = (type: "monthly" | "yearly") => {
     const doc = new jsPDF()
@@ -98,7 +115,7 @@ export default function FinancePage() {
 
     doc.text(
       type === "monthly"
-        ? `Laporan Bulanan ${yearFilter}`
+        ? `Laporan ${monthFilter} ${yearFilter}`
         : `Laporan Tahunan ${yearFilter}`,
       105,
       34,
@@ -140,6 +157,56 @@ export default function FinancePage() {
         `Rp ${Number(order.total).toLocaleString("id-ID")}`
       ])
     })
+
+    autoTable(doc, {
+      startY: (doc as any).lastAutoTable.finalY + 15,
+      head: [[
+        "Customer",
+        "Produk",
+        "Material",
+        "Qty",
+        "Harga",
+        "Total"
+      ]],
+      body: expenseRecords.map(item => [
+        item.customer,
+        item.sourceOrder,
+        item.materialName,
+        item.qty,
+        `Rp ${Number(item.price).toLocaleString("id-ID")}`,
+        `Rp ${Number(item.total).toLocaleString("id-ID")}`
+      ])
+    })
+
+    const finalY = (doc as any).lastAutoTable.finalY
+
+    doc.setFontSize(12)
+
+    doc.text(
+      `TOTAL PENGELUARAN MATERIAL : Rp ${totalExpense.toLocaleString("id-ID")}`,
+      14,
+      finalY + 15
+    )
+
+    const groupedExpenses = expenseRecords.reduce((acc, item) => {
+      const category = item.category || "Lain-lain"
+
+      acc[category] =
+        (acc[category] || 0) +
+        Number(item.total || 0)
+
+      return acc
+    }, {} as Record<string, number>)
+
+    Object.entries(groupedExpenses).forEach(
+      ([category, total], index) => {
+        doc.text(
+          `${category} : Rp ${Number(total).toLocaleString("id-ID")}`,
+          14,
+          finalY + 30 + index * 10
+        )
+      }
+    )
 
     doc.save(
       `Laporan-Keuangan-${type}-${yearFilter}.pdf`
@@ -218,13 +285,25 @@ export default function FinancePage() {
             Analisis Keuangan Bulanan
           </h2>
 
-          <select 
-            value={yearFilter}
-            onChange={(e) => setYearFilter(e.target.value)}
-            className="border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none"
-          >
-            <option value="2026">Tahun 2026</option>
-          </select>
+          <div className="flex gap-2">
+            <select 
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none cursor-pointer"
+            >
+              {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"].map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+
+            <select 
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="border border-gray-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50 focus:outline-none cursor-pointer"
+            >
+              <option value="2026">Tahun 2026</option>
+            </select>
+          </div>
 
         </div>
 
@@ -233,7 +312,14 @@ export default function FinancePage() {
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <XAxis dataKey="month" tickLine={false} axisLine={false} className="font-bold text-slate-400 text-xs" />
-              <YAxis tickLine={false} axisLine={false} className="font-bold text-slate-400 text-xs" />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                className="font-bold text-slate-400 text-xs"
+                tickFormatter={(value) =>
+                  `Rp ${(value / 1000000).toFixed(0)} Jt`
+                }
+              />
               <Tooltip
                 contentStyle={{ borderRadius: '16px', border: '1px solid #E2E8F0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }}
                 formatter={(value) =>
@@ -259,12 +345,8 @@ export default function FinancePage() {
               Pencatatan Pembelian Material
             </h2>
 
-            <p className="text-gray-500 mt-1 text-sm font-medium mb-4">
+            <p className="text-gray-500 mt-1 text-sm font-medium mb-6">
               Data otomatis dari halaman Inventaris Stok
-            </p>
-
-            <p className="text-sm text-slate-500 mb-4">
-              Menampilkan 5 data terbaru dari {expenseRecords.length} pembelian material
             </p>
           </div>
 
@@ -300,7 +382,10 @@ export default function FinancePage() {
                   </td>
                 </tr>
               ) : (
-                expenseRecords.slice(0, 5).map((item) => (
+                (showAllExpenses
+                  ? expenseRecords
+                  : expenseRecords.slice(0, 5)
+                ).map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors text-sm text-slate-700">
                     <td className="p-3 border">
                       <input
@@ -398,18 +483,27 @@ export default function FinancePage() {
           </div>
         </div>
 
+        {expenseRecords.length > 5 && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setShowAllExpenses(!showAllExpenses)}
+              className="px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition cursor-pointer"
+            >
+              {showAllExpenses
+                ? "Tampilkan Lebih Sedikit"
+                : `Tampilkan ${expenseRecords.length - 5} Data Lainnya`}
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* INCOME TABLE */}
       <div className="bg-white rounded-[32px] border border-gray-200 p-6 sm:p-8 shadow-sm">
 
-        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-6">
           Riwayat Pendapatan dari POS
         </h2>
-
-        <p className="text-sm text-slate-500 mb-4">
-          Menampilkan 5 data terbaru dari {orders.length} transaksi
-        </p>
 
         <div className="overflow-auto max-h-[500px]">
 
@@ -436,7 +530,10 @@ export default function FinancePage() {
                   </td>
                 </tr>
               ) : (
-                orders.slice(0, 5).map((order) => (
+                (showAllIncome
+                  ? orders
+                  : orders.slice(0, 5)
+                ).map((order) => (
                   <tr key={order.id} className="border-b border-gray-100 text-sm text-slate-700">
                     <td className="py-5 font-bold text-slate-800">
                       {order.invoice_no || `INV-${order.id}`}
@@ -463,6 +560,19 @@ export default function FinancePage() {
           </table>
 
         </div>
+
+        {orders.length > 5 && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => setShowAllIncome(!showAllIncome)}
+              className="px-6 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-slate-700 transition cursor-pointer"
+            >
+              {showAllIncome
+                ? "Tampilkan Lebih Sedikit"
+                : `Tampilkan ${orders.length - 5} Data Lainnya`}
+            </button>
+          </div>
+        )}
 
       </div>
 

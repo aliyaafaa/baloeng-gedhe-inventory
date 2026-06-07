@@ -139,7 +139,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setOrders([]);
     setProductionList([]);
     setWarehouseStock([]);
-    setExpenseRecords([]);
     setFinanceData({ income: 0, expense: 0, profit: 0 });
     setStockData([]);
 
@@ -338,14 +337,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setMaterialDrafts(loadedDrafts);
 
       // 4. Clear/empty financial transactions state as per instructions (not using financial_transactions table)
-      setExpenseRecords([]);
 
-      // 5. Compute Finances dynamically based solely on orders
+      // 5. Compute Finances dynamically based solely on orders and local expenses
       const computedIncome = parsedOrders.reduce((sum, order) => sum + Number(order.total || 0), 0);
+      const savedExpenses = JSON.parse(localStorage.getItem("expense_records") || "[]");
+      const totalExpense = savedExpenses.reduce((sum: number, item: any) => sum + Number(item.total || 0), 0);
       setFinanceData({
         income: computedIncome,
-        expense: 0,
-        profit: computedIncome
+        expense: totalExpense,
+        profit: computedIncome - totalExpense
       });
 
     } catch (err) {
@@ -377,6 +377,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [materialDrafts, setMaterialDrafts] = useState<MaterialDraft[]>([]);
   const [warehouseStock, setWarehouseStock] = useState<WarehouseStockItem[]>([]);
   const [expenseRecords, setExpenseRecords] = useState<ExpenseRecord[]>([]);
+
+  useEffect(() => {
+    const savedExpenses = localStorage.getItem(
+      "expense_records"
+    );
+
+    if (savedExpenses) {
+      setExpenseRecords(JSON.parse(savedExpenses));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "expense_records",
+      JSON.stringify(expenseRecords)
+    );
+  }, [expenseRecords]);
 
   const addMaterialExpense = (expense: {
     category: string;
@@ -615,6 +632,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const savedStocks = JSON.parse(localStorage.getItem("local_warehouse_stock") || "[]");
     const filteredLocal = savedStocks.filter((s: any) => s.sourceOrder !== draft.product);
     localStorage.setItem("local_warehouse_stock", JSON.stringify([...filteredLocal, ...stockLeft]));
+
+    // SIMPAN KE LAPORAN KEUANGAN
+    const newExpenses: ExpenseRecord[] = draft.items
+      .filter(
+        (item) =>
+          item.materialName &&
+          Number(item.volumeBought || 0) > 0 &&
+          Number(item.price || 0) > 0
+      )
+      .map((item) => ({
+        id: Date.now() + Math.random(),
+        date: new Date().toISOString().split("T")[0],
+        category: item.category,
+        materialName: item.materialName,
+        materialDetail: item.materialDetail,
+        qty: Number(item.volumeBought || 0),
+        unit: item.unit,
+        price: Number(item.price || 0),
+        total:
+          Number(item.volumeBought || 0) *
+          Number(item.price || 0),
+        sourceOrder: draft.product,
+        customer: draft.customer,
+      }));
+
+    setExpenseRecords((prev) => {
+      const updated = [...prev, ...newExpenses];
+
+      const totalExpense = updated.reduce(
+        (sum, item) => sum + item.total,
+        0
+      );
+
+      setFinanceData((finance) => ({
+        ...finance,
+        expense: totalExpense,
+        profit: finance.income - totalExpense,
+      }));
+
+      return updated;
+    });
 
     await saveMaterialDraftDetail(draftId);
 

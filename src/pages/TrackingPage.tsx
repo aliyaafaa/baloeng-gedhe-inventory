@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { useApp } from "../context/AppContext"
 import bgLogo from "../assets/images/bg_logo_1779866363731.png"
@@ -134,8 +134,10 @@ export default function TrackingPage() {
     )
   }
 
-  const [workflowData, setWorkflowData] =
-    useState<any[]>([])
+  const [workflowData, setWorkflowData] = useState<any[]>([])
+  const [draftWorkflow, setDraftWorkflow] = useState<any>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const getActiveWorkflow = () => {
     if (!activeOrder) return null;
@@ -177,6 +179,22 @@ export default function TrackingPage() {
 
   const selectedData = getActiveWorkflow();
 
+  // Load from selectedData into draftWorkflow when order changes
+  useEffect(() => {
+    if (!activeOrder) {
+      setDraftWorkflow(null);
+      setHasUnsavedChanges(false);
+      return;
+    }
+    if (selectedData) {
+      setDraftWorkflow({
+        ...selectedData,
+        steps: selectedData.steps.map((st: any) => ({ ...st }))
+      });
+    }
+    setHasUnsavedChanges(false);
+  }, [activeOrder?.id]);
+
   /* ================= EDIT MODAL ================= */
 
   const [showEditModal, setShowEditModal] =
@@ -211,55 +229,55 @@ export default function TrackingPage() {
     })
 
   const openBatchEdit = () => {
-    if (!selectedData) return;
+    if (!draftWorkflow) return;
     setBatchForm({
-      customer: selectedData.customer || "",
-      product: selectedData.product || "",
-      qty: selectedData.qty || 0,
-      deadline: selectedData.deadline || "",
-      status: selectedData.status || "",
+      customer: draftWorkflow.customer || "",
+      product: draftWorkflow.product || "",
+      qty: draftWorkflow.qty || 0,
+      deadline: draftWorkflow.deadline || "",
+      status: draftWorkflow.status || "Sedang Produksi",
     })
     setShowBatchEdit(true)
   }
 
   const saveBatchEdit = () => {
-    if (!activeOrder) return;
+    if (!draftWorkflow) return;
 
-    const exists = workflowData.some(item => item.id === activeOrder.id);
-    let currentData = workflowData;
-    if (!exists && selectedData) {
-      currentData = [...workflowData, selectedData];
-    }
+    setDraftWorkflow({
+      ...draftWorkflow,
+      customer: batchForm.customer,
+      product: batchForm.product,
+      qty: Number(batchForm.qty),
+      deadline: batchForm.deadline,
+      status: batchForm.status,
+    });
 
-    const updated =
-      currentData.map((batch) => {
-        if (
-          batch.id === activeOrder.id
-        ) {
-          return {
-            ...batch,
-            customer:
-              batchForm.customer,
-            product:
-              batchForm.product,
-            qty:
-              Number(batchForm.qty),
-            deadline:
-              batchForm.deadline,
-            status:
-              batchForm.status,
-          }
-        }
-        return batch
-      })
-
-    setWorkflowData(updated)
-    const updatedBatch = updated.find(b => b.id === activeOrder.id);
-    if (updatedBatch) {
-      updateProductionProgress(activeOrder.id, updatedBatch.progress);
-    }
-    setShowBatchEdit(false)
+    setHasUnsavedChanges(true);
+    setShowBatchEdit(false);
   }
+
+  /* ================= CONFIRM CLOSES ================= */
+
+  const handleCloseEditModal = () => {
+    const step = draftWorkflow?.steps.find((st: any) => st.id === selectedStepId);
+    if (step && (editForm.title !== step.title || editForm.desc !== step.desc || editForm.progress !== step.progress || editForm.status !== step.status)) {
+      if (window.confirm("Perubahan belum disimpan. Yakin ingin keluar?")) {
+        setShowEditModal(false);
+      }
+    } else {
+      setShowEditModal(false);
+    }
+  };
+
+  const handleCloseBatchEdit = () => {
+    if (draftWorkflow && (batchForm.customer !== draftWorkflow.customer || batchForm.product !== draftWorkflow.product || batchForm.qty !== draftWorkflow.qty || batchForm.deadline !== draftWorkflow.deadline || batchForm.status !== draftWorkflow.status)) {
+      if (window.confirm("Perubahan belum disimpan. Yakin ingin keluar?")) {
+        setShowBatchEdit(false);
+      }
+    } else {
+      setShowBatchEdit(false);
+    }
+  };
 
   /* ================= OPEN EDIT ================= */
 
@@ -277,69 +295,34 @@ export default function TrackingPage() {
   /* ================= SAVE EDIT ================= */
 
   const saveStepEdit = () => {
-    if (!activeOrder) return;
+    if (!draftWorkflow) return;
 
-    const exists = workflowData.some(item => item.id === activeOrder.id);
-    let currentData = workflowData;
-    if (!exists && selectedData) {
-      currentData = [...workflowData, selectedData];
-    }
+    const updatedSteps = draftWorkflow.steps.map((step: any) => {
+      if (step.id === selectedStepId) {
+        return {
+          ...step,
+          title: editForm.title,
+          desc: editForm.desc,
+          progress: Number(editForm.progress),
+          status: editForm.status,
+        };
+      }
+      return step;
+    });
 
-    const updated =
-      currentData.map((batch) => {
-        if (
-          batch.id === activeOrder.id
-        ) {
-          const updatedSteps =
-            batch.steps.map((step: any) => {
-              if (
-                step.id === selectedStepId
-              ) {
-                return {
-                  ...step,
-                  title:
-                    editForm.title,
-                  desc:
-                    editForm.desc,
-                  progress:
-                    Number(
-                      editForm.progress
-                    ),
-                  status:
-                    editForm.status,
-                }
-              }
-              return step
-            })
+    const avgProgress = Math.round(
+      updatedSteps.reduce((acc: number, item: any) => acc + item.progress, 0) /
+        updatedSteps.length
+    );
 
-          const avgProgress =
-            Math.round(
-              updatedSteps.reduce(
-                (acc: number, item: any) =>
-                  acc +
-                  item.progress,
-                0
-              ) /
-                updatedSteps.length
-            )
+    setDraftWorkflow({
+      ...draftWorkflow,
+      steps: updatedSteps,
+      progress: avgProgress,
+    });
 
-          return {
-            ...batch,
-            steps:
-              updatedSteps,
-            progress:
-              avgProgress,
-          }
-        }
-        return batch
-      })
-
-    setWorkflowData(updated)
-    const updatedBatch = updated.find(b => b.id === activeOrder.id);
-    if (updatedBatch) {
-      updateProductionProgress(activeOrder.id, updatedBatch.progress);
-    }
-    setShowEditModal(false)
+    setHasUnsavedChanges(true);
+    setShowEditModal(false);
   }
 
   /* ================= UPDATE STEP ================= */
@@ -348,79 +331,57 @@ export default function TrackingPage() {
     stepId: number,
     newStatus: string
   ) => {
-    if (!activeOrder) return;
+    if (!draftWorkflow) return;
 
-    const exists = workflowData.some(item => item.id === activeOrder.id);
-    let currentData = workflowData;
-    if (!exists && selectedData) {
-      currentData = [...workflowData, selectedData];
-    }
+    const updatedSteps = draftWorkflow.steps.map((step: any) => {
+      if (step.id === stepId) {
+        return {
+          ...step,
+          status: newStatus,
+          progress:
+            newStatus === "done"
+              ? 100
+              : newStatus === "progress"
+              ? 64
+              : 0,
+        };
+      }
+      return step;
+    });
 
-    const updated =
-      currentData.map((batch) => {
+    const avgProgress = Math.round(
+      updatedSteps.reduce((acc: number, item: any) => acc + item.progress, 0) /
+        updatedSteps.length
+    );
 
-        if (
-          batch.id === activeOrder.id
-        ) {
+    setDraftWorkflow({
+      ...draftWorkflow,
+      steps: updatedSteps,
+      progress: avgProgress,
+    });
 
-          const updatedSteps =
-            batch.steps.map((step: any) => {
+    setHasUnsavedChanges(true);
+  }
 
-              if (
-                step.id === stepId
-              ) {
+  /* ================= SAVE WORKFLOW GLOBALLY ================= */
 
-                return {
-                  ...step,
-                  status:
-                    newStatus,
+  const saveWorkflowGlobally = () => {
+    if (!activeOrder || !draftWorkflow) return;
 
-                  progress:
-                    newStatus === "done"
-                      ? 100
-                      : newStatus ===
-                        "progress"
-                      ? 64
-                      : 0,
-                }
-              }
+    setWorkflowData((prev) => {
+      const exists = prev.some((item) => item.id === activeOrder.id);
+      if (exists) {
+        return prev.map((item) => (item.id === activeOrder.id ? draftWorkflow : item));
+      } else {
+        return [...prev, draftWorkflow];
+      }
+    });
 
-              return step
-            })
+    updateProductionProgress(activeOrder.id, draftWorkflow.progress, draftWorkflow.status);
+    setHasUnsavedChanges(false);
 
-          const avgProgress =
-            Math.round(
-
-              updatedSteps.reduce(
-                (acc: number, item: any) =>
-                  acc +
-                  item.progress,
-                0
-              ) /
-                updatedSteps.length
-
-            )
-
-          return {
-
-            ...batch,
-
-            steps:
-              updatedSteps,
-
-            progress:
-              avgProgress,
-          }
-        }
-
-        return batch
-      })
-
-    setWorkflowData(updated)
-    const updatedBatch = updated.find(b => b.id === activeOrder.id);
-    if (updatedBatch) {
-      updateProductionProgress(activeOrder.id, updatedBatch.progress);
-    }
+    setToast("Workflow berhasil disimpan");
+    setTimeout(() => setToast(null), 3000);
   }
 
   const materialProgress = activeOrder ? getMaterialProgress(activeOrder.id) : 0;
@@ -496,8 +457,13 @@ export default function TrackingPage() {
                 displayedOrders.map((order) => {
                   // Determine current progress
                   const exists = workflowData.find(item => item.id === order.id);
-                  const progressToDisplay = exists ? exists.progress : (order.progress || 0);
-                  const statusToDisplay = exists ? exists.status : (order.status || "Sedang Produksi");
+                  const isCurrentActive = activeOrder?.id === order.id;
+                  const progressToDisplay = (isCurrentActive && draftWorkflow)
+                    ? draftWorkflow.progress
+                    : (exists ? exists.progress : (order.progress || 0));
+                  const statusToDisplay = (isCurrentActive && draftWorkflow)
+                    ? draftWorkflow.status
+                    : (exists ? exists.status : (order.status || "Sedang Produksi"));
                   const deadlineInfo = getDeadlineInfo(order.createdAt, order.deadline);
 
                   return (
@@ -561,7 +527,14 @@ export default function TrackingPage() {
 
                       <td>
                         <button
-                          onClick={() => setSelectedOrder(order)}
+                          onClick={() => {
+                            if (hasUnsavedChanges) {
+                              if (!window.confirm("Perubahan belum disimpan. Yakin ingin keluar?")) {
+                                return;
+                              }
+                            }
+                            setSelectedOrder(order);
+                          }}
                           className="px-4 py-2 rounded-xl bg-red-700 text-white text-sm font-semibold"
                         >
                           Pantau
@@ -645,14 +618,19 @@ export default function TrackingPage() {
                   Workflow Produksi
                 </h2>
 
-                <p className="text-gray-500 mt-2">
+                <p className="text-gray-500 mt-2 flex items-center gap-2 flex-wrap">
                   Update proses realtime
+                  {hasUnsavedChanges && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 border border-amber-200 text-amber-800 animate-pulse">
+                      ● Perubahan Belum Disimpan
+                    </span>
+                  )}
                 </p>
 
               </div>
 
-              {selectedData && (
-                <div className="flex items-center gap-3">
+              {draftWorkflow && (
+                <div className="flex items-center gap-3 flex-wrap">
                   <button
                     onClick={() => setShowInvoiceModal(true)}
                     className="
@@ -695,25 +673,45 @@ export default function TrackingPage() {
                       font-semibold
                     "
                   >
-                    {selectedData.status}
+                    {draftWorkflow.status}
                   </div>
+
+                  <button
+                    onClick={saveWorkflowGlobally}
+                    className="
+                      px-5
+                      py-3
+                      rounded-2xl
+                      bg-green-600
+                      text-white
+                      font-semibold
+                      hover:bg-green-700
+                      transition-all
+                      shadow-lg
+                      shadow-green-100
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
+                    Simpan Workflow
+                  </button>
                 </div>
               )}
 
             </div>
 
             {/* STEPS */}
-            {selectedData && (
+            {draftWorkflow && (
               <div className="space-y-8 mt-10">
 
-                {selectedData.steps.map(
+                {draftWorkflow.steps.map(
                   (step: any) => {
 
                     const Icon =
                       step.icon
 
-                    const isKain = step.title === "Pengadaan Kain";
-                    const progressPercent = isKain ? materialProgress : step.progress;
+                    const progressPercent = step.progress;
 
                     return (
 
@@ -773,50 +771,26 @@ export default function TrackingPage() {
 
                               {/* PROGRESS */}
                               <div className="mt-5">
-                                {isKain ? (
-                                  <>
-                                    <div className="w-full sm:w-[250px] bg-gray-100 rounded-full h-2 mt-4">
-                                      <div
-                                        className="h-2 rounded-full bg-red-700"
-                                        style={{ width: `${materialProgress}%` }}
-                                      />
-                                    </div>
+                                <div className="w-full sm:w-[250px] h-3 bg-gray-100 rounded-full">
+                                  <div
+                                    className={`
+                                      h-3
+                                      rounded-full
+                                      ${
+                                        step.status === "done"
+                                          ? "bg-green-500"
+                                          : "bg-orange-500"
+                                      }
+                                    `}
+                                    style={{
+                                      width: `${progressPercent}%`,
+                                    }}
+                                  ></div>
+                                </div>
 
-                                    <p className="text-xs text-gray-500 mt-2 font-semibold">
-                                      {materialProgress}% pengadaan material
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="w-full sm:w-[250px] h-3 bg-gray-100 rounded-full">
-
-                                      <div
-                                        className={`
-                                          h-3
-                                          rounded-full
-
-                                          ${
-                                            step.status ===
-                                            "done"
-                                              ? "bg-green-500"
-
-                                              : "bg-orange-500"
-                                          }
-                                        `}
-                                        style={{
-                                          width:
-                                            `${progressPercent}%`,
-                                        }}
-                                      ></div>
-
-                                    </div>
-
-                                    <p className="text-sm text-gray-400 mt-2">
-                                      {progressPercent}% selesai
-                                    </p>
-                                  </>
-                                )}
-
+                                <p className="text-sm text-gray-400 mt-2">
+                                  {progressPercent}% selesai
+                                </p>
                               </div>
 
                             </div>
@@ -940,7 +914,7 @@ export default function TrackingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowEditModal(false)}
+              onClick={handleCloseEditModal}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
@@ -953,7 +927,7 @@ export default function TrackingPage() {
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="text-3xl font-black text-slate-800 tracking-tight">Edit Langkah</h2>
                   <button 
-                    onClick={() => setShowEditModal(false)}
+                    onClick={handleCloseEditModal}
                     className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                   >
                     <X size={24} className="text-slate-400" />
@@ -1014,7 +988,7 @@ export default function TrackingPage() {
 
                 <div className="mt-10 flex gap-4">
                   <button 
-                    onClick={() => setShowEditModal(false)}
+                    onClick={handleCloseEditModal}
                     className="flex-1 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition-all"
                   >
                     Batal
@@ -1038,7 +1012,7 @@ export default function TrackingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowBatchEdit(false)}
+              onClick={handleCloseBatchEdit}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div
@@ -1054,7 +1028,7 @@ export default function TrackingPage() {
                     <p className="text-slate-500 font-medium text-sm mt-1">Update informasi batch produksi customer</p>
                   </div>
                   <button 
-                    onClick={() => setShowBatchEdit(false)}
+                    onClick={handleCloseBatchEdit}
                     className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                   >
                     <X size={24} className="text-slate-400" />
@@ -1123,7 +1097,7 @@ export default function TrackingPage() {
 
                 <div className="mt-10 flex gap-4">
                   <button 
-                    onClick={() => setShowBatchEdit(false)}
+                    onClick={handleCloseBatchEdit}
                     className="flex-1 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition-all"
                   >
                     Batal
@@ -1330,6 +1304,20 @@ export default function TrackingPage() {
               })()}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-slate-900 border border-slate-800 text-white px-6 py-4 rounded-2xl shadow-xl font-bold"
+          >
+            <span className="text-xl">✅</span>
+            <span>{toast}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 

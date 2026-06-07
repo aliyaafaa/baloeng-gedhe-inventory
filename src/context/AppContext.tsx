@@ -118,7 +118,7 @@ interface AppContextType {
   dbNotifications: any[];
   loadDbNotifications: () => Promise<void>;
   checkDeadlineNotifications: (ordersList?: Order[]) => Promise<void>;
-  updateProductionProgress: (id: number, progress: number) => void;
+  updateProductionProgress: (id: number, progress: number, status?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -374,13 +374,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /* ================= PRODUKSI ================= */
   const [productionList, setProductionList] = useState<Order[]>([]);
 
-  const updateProductionProgress = async (id: number, progress: number) => {
+  const updateProductionProgress = async (id: number, progress: number, status?: string) => {
     setProductionList((prev) =>
       prev.map((item) =>
         item.id === id
           ? {
               ...item,
               progress,
+              ...(status ? { status } : {}),
+            }
+          : item
+      )
+    );
+
+    setOrders((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              progress,
+              ...(status ? { status } : {}),
             }
           : item
       )
@@ -388,9 +401,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (isSupabaseConfigured()) {
       try {
+        const updateData: any = { progress };
+        if (status) {
+          updateData.status = status;
+        }
         await supabase
           .from("production_batches")
-          .update({ progress })
+          .update(updateData)
           .eq("id", id);
       } catch (err) {
         console.error("Failed to update progress on Supabase:", err);
